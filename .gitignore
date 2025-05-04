@@ -1,0 +1,50 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Environment variables and secrets
+*.env
+.env.*
+
+# macOS system files
+.DS_Store
+
+# VS Code settings
+.vscode/
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# Testing
+.coverage
+htmlcov/
+.tox/
+.nox/
+pytest_cache/
+.cache/
+
+# MyPy & Pyright
+.mypy_cache/
+.pyre/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Others
+*.bak
+*.swp
+*.tmp
