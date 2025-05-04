@@ -1,0 +1,104 @@
+import networkx as nx
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# === Global graph instance ===
+G = nx.Graph()
+
+def get_graph() -> nx.Graph:
+    """
+    Returns the current global MTR graph.
+    """
+    global G
+    return G
+
+def reset_graph():
+    """
+    Resets the global MTR graph to an empty state.
+    Use this before starting a new measurement series.
+    """
+    global G
+    G.clear()
+
+def build_mtr_graph(df: pd.DataFrame, path_id: int) -> nx.Graph:
+    """
+    Build an undirected graph from an DataFrame of MTR output.
+    Consecutive calls will be added to the same graph, cumulatively.
+    Nodes are unique IPs; edges connect consecutive hops.
+    """
+    global G
+
+    previous_ip = None
+
+    for i, row in df.iterrows():
+        ip = row['host'] or f"UNKNOWN_HOST"
+
+        # Add node if it doesn't already exist
+        if ip not in G:
+            G.add_node(ip, IP_address=ip,
+                    loss_ratio=row['loss'],
+                    path_id=path_id)
+        # multiple path ids are ignored for now.
+
+        # Add edge between current and previous hop (even if IP is the same)
+        if previous_ip is not None:
+            G.add_edge(previous_ip, ip, path_id=path_id)
+
+        previous_ip = ip
+
+    return G
+
+def draw_graph(G: nx.Graph, output_file: str):
+    """
+    Draw the network graph, display and save it to a file.
+    """
+    # Create combined label from structured attributes
+    labels = {
+        node: (
+            f"{data.get('IP_address', node)}\n"
+            f"Loss: {data.get('loss_ratio', 0):.1f}%\n"
+            f"Path: {data.get('path_id', '?')}"
+        )
+        for node, data in G.nodes(data=True)
+    }
+    
+
+    plt.figure(figsize=(24, 14))
+    # pos = nx.spring_layout(G, seed=42)
+    pos = nx.shell_layout(G) # Circular layout
+    nx.draw(G, pos, with_labels=False, node_color='lightblue', node_size=1200)
+    nx.draw_networkx_labels(G, pos, labels, font_size=8)
+
+    # nx.draw_networkx_edges(G, pos, alpha=0.4, width=1)
+
+    # === Static color palette (up to 10 paths)
+    path_colors = [
+        "#1f77b4",  # blue
+        "#ff7f0e",  # orange
+        "#2ca02c",  # green
+        "#d62728",  # red
+        "#9467bd",  # purple
+        "#8c564b",  # brown
+        "#e377c2",  # pink
+        "#7f7f7f",  # gray
+        "#bcbd22",  # olive
+        "#17becf",  # cyan
+    ]
+    # === Draw edges with static colors
+    for u, v, data in G.edges(data=True):
+        path_id = data.get('path_id', 0)
+        color = path_colors[path_id % len(path_colors)]
+        nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], edge_color=color, width=1.5, alpha=0.7)
+
+
+    plt.title("MTR Graph")
+    plt.axis("off")
+    # plt.tight_layout()
+    plt.savefig(output_file, format='png', dpi=300)
+    plt.close()
+    print(f"[INFO] Graph saved to {output_file}")
+    plt.show()
+
+    return
+
+
