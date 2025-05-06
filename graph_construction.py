@@ -37,7 +37,10 @@ def build_mtr_graph(df: pd.DataFrame, path_id: int) -> nx.Graph:
         if ip not in G:
             G.add_node(ip, IP_address=ip,
                     loss_ratio=row['loss'],
-                    path_id=path_id)
+                    path_id=path_id,
+                    lat=row.get("latitude"),
+                    lon=row.get("longitude"),
+                    city=row.get("city"))
         # multiple path ids are ignored for now.
 
         # Add edge between current and previous hop (even if IP is the same)
@@ -53,14 +56,18 @@ def draw_graph(G: nx.Graph, output_file: str):
     Draw the network graph, display and save it to a file.
     """
     # Create combined label from structured attributes
-    labels = {
-        node: (
-            f"{data.get('IP_address', node)}\n"
-            f"Loss: {data.get('loss_ratio', 0):.1f}%\n"
-            f"Path: {data.get('path_id', '?')}"
-        )
-        for node, data in G.nodes(data=True)
-    }
+    labels = {}
+    for node, data in G.nodes(data=True):
+        label = f"{data.get('IP_address', node)}\n"
+        label += f"Loss: {data.get('loss_ratio', 0):.1f}%\n"
+        label += f"Path: {data.get('path_id', '?')}\n"
+        city = data.get("city") or "Unknown"
+        lat = data.get("lat")
+        lon = data.get("lon")
+        label += f"{city}\n"
+        if lat is not None and lon is not None:
+            label += f"({lat:.2f}, {lon:.2f})"
+        labels[node] = label
     
 
     plt.figure(figsize=(24, 14))
@@ -73,16 +80,8 @@ def draw_graph(G: nx.Graph, output_file: str):
 
     # === Static color palette (up to 10 paths)
     path_colors = [
-        "#1f77b4",  # blue
-        "#ff7f0e",  # orange
-        "#2ca02c",  # green
-        "#d62728",  # red
-        "#9467bd",  # purple
-        "#8c564b",  # brown
-        "#e377c2",  # pink
-        "#7f7f7f",  # gray
-        "#bcbd22",  # olive
-        "#17becf",  # cyan
+        "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
     ]
     # === Draw edges with static colors
     for u, v, data in G.edges(data=True):
