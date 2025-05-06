@@ -70,8 +70,8 @@ def draw_graph(G: nx.Graph, output_file: str):
         labels[node] = label
     
 
-    plt.figure(figsize=(24, 14))
-    # pos = nx.spring_layout(G, seed=42)
+    plt.figure(figsize=(30, 20))
+    # pos = nx.spring_layout(G, seed=42, k=0.8)
     pos = nx.shell_layout(G) # Circular layout
     nx.draw(G, pos, with_labels=False, node_color='lightblue', node_size=1200)
     nx.draw_networkx_labels(G, pos, labels, font_size=8)
