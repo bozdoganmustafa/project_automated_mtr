@@ -22,7 +22,7 @@ def reset_graph():
 
 def build_mtr_graph(df: pd.DataFrame, path_id: int) -> nx.Graph:
     """
-    Build an undirected graph from an DataFrame of MTR output.
+    Build an undirected graph from an DataFrame of MTR output. It shows the path traces.
     Consecutive calls will be added to the same graph, cumulatively.
     Nodes are unique IPs; edges connect consecutive hops.
     """
