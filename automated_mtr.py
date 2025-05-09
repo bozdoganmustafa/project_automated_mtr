@@ -6,6 +6,7 @@ import os
 import graph_construction as gc
 import IP_geolocation as geo
 
+TOKEN_IPINFO = "34f1e6afbef803"  # Personal IPinfo token
 
 # === Configuration ===
 DESTINATIONS = ["tum.de", "8.8.8.8", "cloudflare.com", "177.192.255.38", "www.international.unb.br", "www.studyinfinland.fi" ]  # Target IP or hostname
@@ -29,7 +30,7 @@ def process_mtr_for_destination(destination: str, iteration_number: int):
         if not df.empty:
             analyze_mtr_trace(df, destination)
 
-            df = geo.find_geolocation(df)
+            df = geo.find_geolocation_by_ipinfo(df)
             # === Build the graph ===
             gc.build_mtr_graph(df, iteration_number)
 
