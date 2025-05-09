@@ -25,7 +25,7 @@ pip install -r requirements.txt
 ### 2. Start the Process
 Run the main script to begin automated tracing:
 ```bash
-python3 automated_mtr.py
+python3 process_manager.py
 ```
 Process is expected to run 1-2 minutes due to mtr cycles and IP look-ups. 
 Processing time may vary depending on the number of destinations and the length of the paths.

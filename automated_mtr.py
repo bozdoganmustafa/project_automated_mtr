@@ -1,52 +1,19 @@
 import subprocess
 import json
 import pandas as pd
-import datetime
 import os
-import graph_construction as gc
-import IP_geolocation as geo
-
-TOKEN_IPINFO = "34f1e6afbef803"  # Personal IPinfo token
-
-# === Configuration ===
-DESTINATIONS = ["tum.de", "8.8.8.8", "cloudflare.com", "177.192.255.38", "www.international.unb.br", "www.studyinfinland.fi" ]  # Target IP or hostname
-COUNT = 10                        # Number of pings per hop
-OUTPUT_DIR = "./mtr_logs"         # Folder to save logs
-ALERT_LOSS_THRESHOLD = 10.0       # % packet loss to flag a hop
-
-# === Ensure Output Directory Exists ===
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-
-# --------------------------------------
-def process_mtr_for_destination(destination: str, iteration_number: int):
-    """
-    Full pipeline for one destination.
-    """
-    filepath = run_mtr(destination)
-    if filepath:
-        df = parse_mtr_json(filepath, iteration_number)
-        if not df.empty:
-            analyze_mtr_trace(df, destination)
-
-            df = geo.find_geolocation_by_ipinfo(df)
-            # === Build the graph ===
-            gc.build_mtr_graph(df, iteration_number)
-
 
 # === Run MTR Command for each Destination ===
-def run_mtr(destination: str) -> str:
+def run_mtr(destination: str, output_dir: str, timestamp: str, count: int) -> str:
     """
     Run MTR to the destination host and save JSON output.
     Returns the path to the saved JSON file.
     """
     # === Generate Timestamped Output File === 
-    output_file = os.path.join(OUTPUT_DIR, f"mtr_{destination}_{TIMESTAMP}.json")
+    output_file = os.path.join(output_dir, f"mtr_{destination}_{timestamp}.json")
     
-    mtr_cmd = [
-        "mtr", "-rw","--no-dns","--aslookup","--report-cycles", str(COUNT), "--json", destination
-    ]
+    mtr_cmd = ["mtr", "-rw", "--no-dns", "--aslookup", "--report-cycles", str(count), "--json", destination]
+
     # Alternatives: "--no-dns" / "--show-ips"
     # It is not running the command through a shell (e.g., bash).
     # It is using Python’s file writing, not shell redirection ( > output_file ).
@@ -101,7 +68,7 @@ def parse_mtr_json(filepath: str, iteration_number: int) -> pd.DataFrame:
 
 
 # === Analyze Content of Trace ===
-def analyze_mtr_trace(df: pd.DataFrame, destination: str):
+def analyze_mtr_trace(df: pd.DataFrame, destination: str, alert_threshold: float):
     """
     Display hop summary and flag high packet loss.
     """
@@ -109,23 +76,9 @@ def analyze_mtr_trace(df: pd.DataFrame, destination: str):
     print(df.to_string(index=False))
 
     # === Filter High Packet Loss Hops ===
-    high_loss = df[df["loss"] > ALERT_LOSS_THRESHOLD]
+    high_loss = df[df["loss"] > alert_threshold]
     if not high_loss.empty:
-        print(f"\n=== ⚠️ Hops with High Packet Loss (> {ALERT_LOSS_THRESHOLD}%) ===")
+        print(f"\n=== ⚠️ Hops with High Packet Loss (> {alert_threshold}%) ===")
         print(high_loss.to_string(index=False))
     else:
         print("\n[INFO] No high packet loss detected.")
-
-
-
-# ---------- main : Start of Run Script ------------
-if __name__ == "__main__":
-    
-    gc.reset_graph()
-
-    for i, dest in enumerate(DESTINATIONS):
-        process_mtr_for_destination(dest, i + 1)  # Pass iteration number
-    
-    # === Draw the graph ===
-    G = gc.get_graph()
-    gc.draw_graph(G, os.path.join(OUTPUT_DIR, f"mtr_graph__{TIMESTAMP}.png"))
