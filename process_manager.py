@@ -38,9 +38,10 @@ def process_mtr_for_destination(destination: str, iteration_number: int):
             df_mtr_result_extended_geolocation = geo.find_geolocation_by_ipinfo(df_mtr_result, TOKEN_IPINFO)
 
             pp.update_explored_nodes(df_mtr_result)
-            pp.update_latency_matrix(df_mtr_result)
-
-            # === Build the graph ===
+            pp.ensure_latency_matrix_square(pp.get_explored_nodes_df())
+            pp.update_latency_matrix_for_source_node(df_mtr_result)
+            pp.update_latency_matrix_for_traversed_hops(df_mtr_result)
+            # Build the path trace graph
             gc.build_mtr_graph(df_mtr_result_extended_geolocation, iteration_number)
 
 
@@ -54,6 +55,8 @@ if __name__ == "__main__":
 
     for i, dest in enumerate(DESTINATIONS):
         process_mtr_for_destination(dest, i + 1)
+
+    pp.symmetrize_latency_matrix()
 
     # === Show final explored nodes
     print("\n=== Explored Nodes ===")

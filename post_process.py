@@ -64,7 +64,7 @@ def finalize_explored_nodes_index():
         else:
             print("[WARNING] 'node_id' column not found in explored_nodes_df.")
 
-def update_latency_matrix(df: pd.DataFrame):
+def update_latency_matrix_for_source_node(df: pd.DataFrame):
     """
     Update global latency_matrix with new average latencies from MTR results df.
     Assumes first hop is the source and subsequent hops are destinations.
@@ -108,3 +108,111 @@ def update_latency_matrix(df: pd.DataFrame):
             if pd.isna(current) or best_latency < current:
                 latency_matrix.at[src_node_id, dst_node_id] = best_latency
 
+
+def update_latency_matrix_for_traversed_hops(df: pd.DataFrame):
+    """
+    Update global latency_matrix with best latencies between each consecutive hop in the path.
+    Latency between hop i and hop i+1 is calculated as:
+        latency(i → i+1) = best_latency(i+1) - best_latency(i)
+    Negative values (due to measurement noise) are preserved.
+    """
+    global latency_matrix
+
+    if df.empty or len(df) < 2:
+        return
+
+    # Loop over consecutive hop pairs
+    for i in range(len(df) - 1):
+        src_row = df.iloc[i]
+        dst_row = df.iloc[i + 1]
+
+        src_ip = src_row["host"]
+        dst_ip = dst_row["host"]
+
+        src_node_id = get_node_id(src_ip)
+        dst_node_id = get_node_id(dst_ip)
+
+        if src_node_id is None or dst_node_id is None:
+            continue
+        
+        # Use best latency value which is the minimum observed latency.
+        src_best = src_row.get("best", None)
+        dst_best = dst_row.get("best", None)
+
+        if src_best is None or dst_best is None:
+            continue
+
+        delta_latency = dst_best - src_best  # keep even if negative
+
+        # Ensure matrix structure, both row and column exist.
+        if dst_node_id not in latency_matrix.columns:
+            latency_matrix[dst_node_id] = pd.NA
+        if src_node_id not in latency_matrix.index:
+            latency_matrix.loc[src_node_id] = pd.NA
+
+        current = latency_matrix.at[src_node_id, dst_node_id]
+        if pd.isna(current) or delta_latency < current:
+            latency_matrix.at[src_node_id, dst_node_id] = delta_latency
+
+def symmetrize_latency_matrix():
+    """
+    Symmetrizes the global latency_matrix in-place.
+    """
+    global latency_matrix
+    latency_matrix = symmetrize_matrix(latency_matrix)
+
+def ensure_latency_matrix_square(nodes_df: pd.DataFrame):
+    """
+    Ensures each node_id in the provided DataFrame exists as both a row and column
+    in the global latency_matrix. This keeps the matrix square.
+    """
+    global latency_matrix
+
+    node_ids = nodes_df["node_id"].tolist() if "node_id" in nodes_df.columns else []
+
+ # First, ensure at least one column exists before adding rows
+    if latency_matrix.empty:
+        # Create a dummy column with NA values to allow safe row assignment
+        latency_matrix["__init__"] = pd.NA
+
+    for node_id in node_ids:
+        if node_id not in latency_matrix.index:
+            latency_matrix.loc[node_id] = pd.NA
+        if node_id not in latency_matrix.columns:
+            latency_matrix[node_id] = pd.NA
+
+    # Remove dummy column if it still exists
+    if "__init__" in latency_matrix.columns:
+        latency_matrix.drop(columns="__init__", inplace=True)
+
+def symmetrize_matrix(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Returns a symmetric version of the given latency matrix.
+    For each pair (i, j), sets:
+        result[i][j] = result[j][i] = min(df[i][j], df[j][i]) if both exist,
+                                     or whichever exists if one is missing.
+    """
+    result = df.copy()
+    all_node_ids = set(result.index).union(set(result.columns))
+
+    for i in all_node_ids:
+        for j in all_node_ids:
+            if i == j:
+                continue
+
+            val_ij = result.at[i, j] if j in result.columns and i in result.index else pd.NA
+            val_ji = result.at[j, i] if i in result.columns and j in result.index else pd.NA
+
+            if pd.isna(val_ij) and pd.isna(val_ji):
+                continue  # nothing to set
+
+            if pd.isna(val_ij):
+                result.at[i, j] = val_ji
+            elif pd.isna(val_ji):
+                result.at[j, i] = val_ij
+            else:
+                min_val = min(val_ij, val_ji)
+                result.at[i, j] = min_val
+                result.at[j, i] = min_val
+
+    return result
