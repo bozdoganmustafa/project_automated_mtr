@@ -34,7 +34,8 @@ def process_mtr_for_destination(destination: str, iteration_number: int):
         df_mtr_result = mtr.parse_mtr_json(filepath, iteration_number)
         if df_mtr_result is not None and not df_mtr_result.empty:
             mtr.analyze_mtr_trace(df_mtr_result, destination, ALERT_LOSS_THRESHOLD)
-            
+            df_mtr_result = mtr.filter_mtr_traces(df_mtr_result, 99.0)
+
             df_mtr_result_extended_geolocation = geo.find_geolocation_by_ipinfo(df_mtr_result, TOKEN_IPINFO)
 
             pp.update_explored_nodes(df_mtr_result)

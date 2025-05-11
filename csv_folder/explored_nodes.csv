@@ -14,11 +14,11 @@ node_id,IP_address,ASN,latitude,longitude,city,region,country
 12,188.1.37.90,AS680,52.3705,9.7332,Hannover,Lower Saxony,DE
 13,129.187.0.168,AS12816,48.1153,11.5974,Munich,Bavaria,DE
 14,129.187.255.109,AS12816,48.1153,11.5974,Munich,Bavaria,DE
-15,10.0.81.131,AS???,,,,,
-16,10.81.102.94,AS???,,,,,
-17,62.53.8.133,AS6805,48.1374,11.5755,Munich,Bavaria,DE
-18,185.1.208.9,AS???,48.1374,11.5755,Munich,Bavaria,DE
-19,104.16.133.229,AS13335,37.7621,-122.3971,San Francisco,California,US
+15,62.53.8.133,AS6805,48.1374,11.5755,Munich,Bavaria,DE
+16,185.1.208.9,AS???,48.1374,11.5755,Munich,Bavaria,DE
+17,104.16.132.229,AS13335,37.7621,-122.3971,San Francisco,California,US
+18,10.0.81.131,AS???,,,,,
+19,10.81.102.94,AS???,,,,,
 20,62.53.2.151,AS6805,50.1155,8.6842,Frankfurt am Main,Hesse,DE
 21,62.53.28.169,AS6805,50.1155,8.6842,Frankfurt am Main,Hesse,DE
 22,176.52.252.32,AS12956,50.1155,8.6842,Frankfurt am Main,Hesse,DE
@@ -33,8 +33,8 @@ node_id,IP_address,ASN,latitude,longitude,city,region,country
 31,200.130.101.47,AS1916,-15.7797,-47.9297,Brasília,Federal District,BR
 32,200.130.101.32,AS1916,-15.7797,-47.9297,Brasília,Federal District,BR
 33,164.41.101.38,AS21506,-15.7797,-47.9297,Brasília,Federal District,BR
-34,62.53.13.83,AS6805,48.1374,11.5755,Munich,Bavaria,DE
-35,52.93.145.45,AS16509,59.3294,18.0687,Stockholm,Stockholm,SE
-36,52.93.145.30,AS16509,59.3294,18.0687,Stockholm,Stockholm,SE
-37,52.93.145.39,AS16509,59.3294,18.0687,Stockholm,Stockholm,SE
-38,52.93.142.116,AS16509,59.3294,18.0687,Stockholm,Stockholm,SE
+34,62.53.14.227,AS6805,48.1374,11.5755,Munich,Bavaria,DE
+35,52.93.145.229,AS16509,59.3294,18.0687,Stockholm,Stockholm,SE
+36,52.93.145.120,AS16509,59.3294,18.0687,Stockholm,Stockholm,SE
+37,52.93.145.131,AS16509,59.3294,18.0687,Stockholm,Stockholm,SE
+38,52.93.142.142,AS16509,59.3294,18.0687,Stockholm,Stockholm,SE

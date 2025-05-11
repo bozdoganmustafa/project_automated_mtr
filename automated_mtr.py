@@ -34,6 +34,10 @@ def parse_mtr_json(filepath: str, iteration_number: int) -> pd.DataFrame:
     """
     Parse MTR JSON and return a DataFrame of hop records.
     """
+    if os.path.getsize(filepath) == 0:
+        print(f"[ERROR] JSON file is empty: {filepath}")
+        return None
+    
     with open(filepath, "r") as f:
         data = json.load(f)
 
@@ -78,7 +82,23 @@ def analyze_mtr_trace(df: pd.DataFrame, destination: str, alert_threshold: float
     # === Filter High Packet Loss Hops ===
     high_loss = df[df["loss"] > alert_threshold]
     if not high_loss.empty:
-        print(f"\n=== ⚠️ Hops with High Packet Loss (> {alert_threshold}%) ===")
+        print(f"\n=== Hops with High Packet Loss (> {alert_threshold}%) ===")
         print(high_loss.to_string(index=False))
     else:
         print("\n[INFO] No high packet loss detected.")
+
+def filter_mtr_traces(df: pd.DataFrame, loss_threshold: float) -> pd.DataFrame:
+    """
+    Filters MTR trace DataFrame to remove rows with packet loss greater than the threshold.
+
+    Parameters:
+    - df: DataFrame resulting from MTR JSON parsing.
+    - loss_threshold: Maximum allowed packet loss percentage (e.g., 10.0).
+
+    Returns:
+    - A filtered DataFrame with rows above the threshold removed.
+    """
+    if df is None or df.empty:
+        return df
+
+    return df[df["loss"] <= loss_threshold].copy()
