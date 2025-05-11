@@ -1,6 +1,8 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
+import numpy as np
 
 # === Global graph instance ===
 G = nx.Graph()
@@ -100,4 +102,39 @@ def draw_graph(G: nx.Graph, output_file: str):
 
     return
 
+def plot_latency_heatmap(output_file: str, title: str, df: pd.DataFrame):
+    """
+    Plots a heatmap of the latency matrix and saves it to the given file path.
+    """
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import numpy as np
 
+    if df.empty:
+        print("[WARN] Provided latency matrix is empty. Heatmap not generated.")
+        return
+
+    plot_df = df.copy().replace({pd.NA: np.nan})
+    plot_df = plot_df.astype("float64")
+
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(
+        plot_df,
+        annot=True,
+        fmt=".1f",
+        cmap="coolwarm",
+        center=0,
+        linewidths=0.5,
+        linecolor='gray',
+        cbar_kws={"label": "Latency (ms)"},
+        square=True
+    )
+
+    plt.title(title)
+    plt.xlabel("Destination Node ID")
+    plt.ylabel("Source Node ID")
+    plt.tight_layout()
+    plt.savefig(output_file, format='png', dpi=300)
+    plt.close()
+
+    print(f"[INFO] Heatmap saved to {output_file}")

@@ -14,13 +14,13 @@ DESTINATIONS = ["tum.de", "cloudflare.com", "www.international.unb.br", "www.stu
 PING_CYCLES = 10                        # Number of pings per hop
 OUTPUT_DIR = "./mtr_logs"         # Folder to save logs
 ALERT_LOSS_THRESHOLD = 10.0       # % packet loss to flag a hop
-
 CSV_DIR = "./csv_folder" 
+GRAPH_DIR = "./graph_folder"  # Folder to save graphs
 
 # === Ensure Output Directory Exists ===
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(CSV_DIR, exist_ok=True)
-
+os.makedirs(GRAPH_DIR, exist_ok=True)
 
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -73,4 +73,12 @@ if __name__ == "__main__":
 
     # === Draw the graph ===
     G = gc.get_graph()
-    gc.draw_graph(G, os.path.join(OUTPUT_DIR, f"mtr_graph__{TIMESTAMP}.png"))
+    gc.draw_graph(G, os.path.join(GRAPH_DIR, f"mtr_graph__{TIMESTAMP}.png"))
+
+    # === Plot latency heatmap
+    heatmap_path = os.path.join(GRAPH_DIR, f"latency_heatmap__{TIMESTAMP}.png")
+    gc.plot_latency_heatmap(
+        output_file=heatmap_path,
+        title="Symmetrized Latency Heatmap",
+        df=pp.get_latency_matrix()
+    )
