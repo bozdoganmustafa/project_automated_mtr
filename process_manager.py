@@ -9,13 +9,14 @@ import post_process as pp
 TOKEN_IPINFO = "34f1e6afbef803"  # Personal IP Info token for "Lite" plan.
 
 # === Configuration ===
-DESTINATIONS = ["tum.de", "cloudflare.com", "www.international.unb.br", "www.studyinfinland.fi" ]  # Target IP or hostname
-# , "8.8.8.8", "177.192.255.38" Removed for now. 1st is USA, 2nd is Brazil.
 PING_CYCLES = 10                        # Number of pings per hop
 OUTPUT_DIR = "./mtr_logs"         # Folder to save logs
 ALERT_LOSS_THRESHOLD = 10.0       # % packet loss to flag a hop
-CSV_DIR = "./csv_folder" 
 GRAPH_DIR = "./graph_folder"  # Folder to save graphs
+
+CSV_DIR = "./csv_folder" 
+DESTINATIONS_FILE = os.path.join(CSV_DIR, "destinations.csv")
+DESTINATIONS = pd.read_csv(DESTINATIONS_FILE, header=None)[0].str.strip().tolist()
 
 # === Ensure Output Directory Exists ===
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -23,7 +24,6 @@ os.makedirs(CSV_DIR, exist_ok=True)
 os.makedirs(GRAPH_DIR, exist_ok=True)
 
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-
 
 def process_mtr_for_destination(destination: str, iteration_number: int):
     """
