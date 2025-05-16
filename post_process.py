@@ -1,7 +1,9 @@
 import pandas as pd
 import IP_geolocation as geo
 
-# shared global structures
+# Shared Global Structures
+
+# Global latency matrix to store latencies between nodes. 
 latency_matrix = pd.DataFrame()  # rows: source node_ID, columns: destination node_ID
 
 # Global list of Nodes for all hops with valid IP address in the traces.
@@ -9,9 +11,6 @@ explored_nodes_df = pd.DataFrame(columns=[
     "node_id", "IP_address", "ASN", "latitude", "longitude", "city", "region", "country"
 ])
 next_node_id = [0]  # Mutable counter
-
-# Global latency matrix to store average latencies between nodes. 
-latency_matrix = pd.DataFrame()  # rows: source node_ID, columns: destination node_ID
 
 def get_explored_nodes_df():
     return explored_nodes_df
@@ -69,7 +68,8 @@ def update_latency_matrix_for_source_node(df: pd.DataFrame):
     Update global latency_matrix with new average latencies from MTR results df.
     Assumes first hop is the source and subsequent hops are destinations.
     Latencies in between hops are not evaluated.
-    Matrix will be symmetrized. Not Implemented yet.
+    Latency is calculated as: avg - stdev
+    Matrix will be symmetrized at next steps.
     """
     global latency_matrix
 
@@ -101,19 +101,22 @@ def update_latency_matrix_for_source_node(df: pd.DataFrame):
         if dst_node_id is None:
             continue
 
-        best_latency = row.get("best", None)
-        if best_latency is not None:
+        avg = row.get("avg", None)
+        stdev = row.get("stdev", None)
+
+        if avg is not None and stdev is not None:
+            latency = avg - stdev
             current = latency_matrix.at[src_node_id, dst_node_id] if dst_node_id in latency_matrix.columns else None
 
-            if pd.isna(current) or best_latency < current:
-                latency_matrix.at[src_node_id, dst_node_id] = best_latency
+            if pd.isna(current) or latency < current:
+                latency_matrix.at[src_node_id, dst_node_id] = latency
 
 
 def update_latency_matrix_for_traversed_hops(df: pd.DataFrame):
     """
     Update global latency_matrix with best latencies between each consecutive hop in the path.
     Latency between hop i and hop i+1 is calculated as:
-        latency(i → i+1) = best_latency(i+1) - best_latency(i)
+        latency(i → i+1) = (avg_i+1 - stdev_i+1) - (avg_i - stdev_i)
     Negative values (due to measurement noise) are preserved.
     """
     global latency_matrix
@@ -135,14 +138,18 @@ def update_latency_matrix_for_traversed_hops(df: pd.DataFrame):
         if src_node_id is None or dst_node_id is None:
             continue
         
-        # Use best latency value which is the minimum observed latency.
-        src_best = src_row.get("best", None)
-        dst_best = dst_row.get("best", None)
+        # Take latency value as Average - Standard Deviation.
+        src_avg = src_row.get("avg", None)
+        src_stdev = src_row.get("stdev", None)
+        dst_avg = dst_row.get("avg", None)
+        dst_stdev = dst_row.get("stdev", None)
 
-        if src_best is None or dst_best is None:
+        if None in (src_avg, src_stdev, dst_avg, dst_stdev):
             continue
 
-        delta_latency = dst_best - src_best  # keep even if negative
+        latency_src = src_avg - src_stdev
+        latency_dst = dst_avg - dst_stdev
+        delta_latency = latency_dst - latency_src
 
         # Ensure matrix structure, both row and column exist.
         if dst_node_id not in latency_matrix.columns:
