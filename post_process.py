@@ -68,7 +68,7 @@ def update_latency_matrix_for_source_node(df: pd.DataFrame):
     Update global latency_matrix with new average latencies from MTR results df.
     Assumes first hop is the source and subsequent hops are destinations.
     Latencies in between hops are not evaluated.
-    Latency is calculated as: avg - stdev
+    Latency is calculated as: avg - stdev and smoothed to be non-decreasing.
     Matrix will be symmetrized at next steps.
     """
     global latency_matrix
@@ -82,6 +82,26 @@ def update_latency_matrix_for_source_node(df: pd.DataFrame):
     if src_node_id is None:
         return  # unknown source
     
+    latencies = []
+    for _, row in df.iterrows():
+        avg = row.get("avg", None)
+        stdev = row.get("stdev", None)
+        if avg is None or stdev is None:
+            latencies.append(None)
+        else:
+            latencies.append(avg - stdev)
+
+    # Monotonic increase by smoothing
+    smoothed = []
+    prev = 0
+    for val in latencies:
+        if val is None:
+            smoothed.append(None)
+            continue
+        val = max(val, prev)
+        smoothed.append(val)
+        prev = val
+
     # Ensure destination columns exist
     for _, row in df.iloc[1:].iterrows():
         dst_ip = row["host"]
@@ -94,35 +114,53 @@ def update_latency_matrix_for_source_node(df: pd.DataFrame):
     # Ensure row for this source exists
     if src_node_id not in latency_matrix.index:
         latency_matrix.loc[src_node_id] = pd.NA 
-
-    for _, row in df.iloc[1:].iterrows():  # skip first row (source)
-        dst_ip = row["host"]
+    # Fill values from source to all hops
+    for i in range(1, len(df)): # skip first row (source)
+        dst_ip = df.iloc[i]["host"]
         dst_node_id = get_node_id(dst_ip)
         if dst_node_id is None:
             continue
+        latency = smoothed[i]
+        if latency is None:
+            continue
 
-        avg = row.get("avg", None)
-        stdev = row.get("stdev", None)
-
-        if avg is not None and stdev is not None:
-            latency = avg - stdev
-            current = latency_matrix.at[src_node_id, dst_node_id] if dst_node_id in latency_matrix.columns else None
-
-            if pd.isna(current) or latency < current:
-                latency_matrix.at[src_node_id, dst_node_id] = latency
-
+        current = latency_matrix.at[src_node_id, dst_node_id]
+        if pd.isna(current) or latency < current:
+            latency_matrix.at[src_node_id, dst_node_id] = latency
 
 def update_latency_matrix_for_traversed_hops(df: pd.DataFrame):
     """
     Update global latency_matrix with best latencies between each consecutive hop in the path.
     Latency between hop i and hop i+1 is calculated as:
         latency(i → i+1) = (avg_i+1 - stdev_i+1) - (avg_i - stdev_i)
-    Negative values (due to measurement noise) are preserved.
+    Negative values (due to measurement noise) are suppressed by applying a smoothing technique.
     """
     global latency_matrix
 
     if df.empty or len(df) < 2:
         return
+
+
+    # Take all latency values as Average - Standard Deviation in the path.
+    latencies = []
+    for _, row in df.iterrows():
+        avg = row.get("avg", None)
+        stdev = row.get("stdev", None)
+        if avg is None or stdev is None:
+            latencies.append(None)
+        else:
+            latencies.append(avg - stdev)
+
+    # Monotonic Increase in consecutive latencies by applying smoothing.
+    smoothed_latencies = []
+    prev = 0
+    for val in latencies:
+        if val is None:
+            smoothed_latencies.append(None)
+            continue
+        val = max(val, prev)  # Enforce monotonic increase
+        smoothed_latencies.append(val)
+        prev = val
 
     # Loop over consecutive hop pairs
     for i in range(len(df) - 1):
@@ -138,18 +176,13 @@ def update_latency_matrix_for_traversed_hops(df: pd.DataFrame):
         if src_node_id is None or dst_node_id is None:
             continue
         
-        # Take latency value as Average - Standard Deviation.
-        src_avg = src_row.get("avg", None)
-        src_stdev = src_row.get("stdev", None)
-        dst_avg = dst_row.get("avg", None)
-        dst_stdev = dst_row.get("stdev", None)
+        src_latency = smoothed_latencies[i]
+        dst_latency = smoothed_latencies[i + 1]
 
-        if None in (src_avg, src_stdev, dst_avg, dst_stdev):
+        if src_latency is None or dst_latency is None:
             continue
 
-        latency_src = src_avg - src_stdev
-        latency_dst = dst_avg - dst_stdev
-        delta_latency = latency_dst - latency_src
+        delta_latency = dst_latency - src_latency
 
         # Ensure matrix structure, both row and column exist.
         if dst_node_id not in latency_matrix.columns:
