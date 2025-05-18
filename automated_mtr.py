@@ -72,22 +72,22 @@ def parse_mtr_json(filepath: str, iteration_number: int) -> pd.DataFrame:
 
 
 # === Analyze Content of Trace ===
-def analyze_mtr_trace(df: pd.DataFrame, destination: str, alert_threshold: float):
+def analyze_mtr_trace(mtr_result: pd.DataFrame, destination: str, alert_threshold: float):
     """
     Display hop summary and flag high packet loss.
     """
     print(f"\n=== Full Hop Summary for {destination} ===")
-    print(df.to_string(index=False))
+    print(mtr_result.to_string(index=False))
 
     # === Filter High Packet Loss Hops ===
-    high_loss = df[df["loss"] > alert_threshold]
+    high_loss = mtr_result[mtr_result["loss"] > alert_threshold]
     if not high_loss.empty:
         print(f"\n=== Hops with High Packet Loss (> {alert_threshold}%) ===")
         print(high_loss.to_string(index=False))
     else:
         print("\n[INFO] No high packet loss detected.")
 
-def filter_mtr_traces(df: pd.DataFrame, loss_threshold: float) -> pd.DataFrame:
+def filter_mtr_traces(mtr_result: pd.DataFrame, loss_threshold: float) -> pd.DataFrame:
     """
     Filters MTR trace DataFrame to remove rows with packet loss greater than the threshold.
 
@@ -98,7 +98,7 @@ def filter_mtr_traces(df: pd.DataFrame, loss_threshold: float) -> pd.DataFrame:
     Returns:
     - A filtered DataFrame with rows above the threshold removed.
     """
-    if df is None or df.empty:
-        return df
+    if mtr_result is None or mtr_result.empty:
+        return mtr_result
 
-    return df[df["loss"] <= loss_threshold].copy()
+    return mtr_result[mtr_result["loss"] <= loss_threshold].copy()
