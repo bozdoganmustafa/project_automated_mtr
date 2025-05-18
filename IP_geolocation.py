@@ -2,19 +2,19 @@ import pandas as pd
 import requests
 import time
 
-def find_geolocation_by_ipinfo(df: pd.DataFrame, token: str = None) -> pd.DataFrame:
+def find_geolocation_by_ipinfo(mtr_result: pd.DataFrame, token: str = None) -> pd.DataFrame:
     """
     Add geolocation fields to the MTR DataFrame using IPinfo API.
     Uses the free tier or token if provided.
     """
     # Initialize new fields if not present
     for col in ["latitude", "longitude", "country", "region", "city", "org"]:
-        if col not in df.columns:
-            df[col] = None
+        if col not in mtr_result.columns:
+            mtr_result[col] = None
 
     headers = {"Authorization": f"Bearer {token}"} if token else {}
 
-    for idx, row in df.iterrows():
+    for idx, row in mtr_result.iterrows():
         ip = row["host"]
 
         if not is_valid_ip(ip):
@@ -34,30 +34,30 @@ def find_geolocation_by_ipinfo(df: pd.DataFrame, token: str = None) -> pd.DataFr
                 except ValueError:
                     pass
 
-            df.at[idx, "latitude"] = lat
-            df.at[idx, "longitude"] = lon
-            df.at[idx, "country"] = data.get("country")
-            df.at[idx, "region"] = data.get("region")
-            df.at[idx, "city"] = data.get("city")
+            mtr_result.at[idx, "latitude"] = lat
+            mtr_result.at[idx, "longitude"] = lon
+            mtr_result.at[idx, "country"] = data.get("country")
+            mtr_result.at[idx, "region"] = data.get("region")
+            mtr_result.at[idx, "city"] = data.get("city")
 
             if token: # If token is provided, use extended fields
                 org_field = data.get("org", "")
                 if org_field:
-                    df.at[idx, "org"] = org_field
+                    mtr_result.at[idx, "org"] = org_field
 
                     # Overwrite ASN only if current one is invalid
                     if row["ASN"] in [None, "", "N/A", "AS???"]:
                         if org_field.startswith("AS"):
-                            df.at[idx, "ASN"] = org_field.split(" ")[0]
+                            mtr_result.at[idx, "ASN"] = org_field.split(" ")[0]
 
         except Exception as e:
             print(f"[ERROR] Failed to fetch geolocation for {ip}: {e}")
 
         time.sleep(1.0)  # Light throttling
 
-    return df
+    return mtr_result
 
-## Depreceated function
+## Depreceated function. It uses ip-api.com.
 def find_geolocation(df: pd.DataFrame) -> pd.DataFrame:
     """
     Gets geolocation information for each IP address by IP-lookup from www.ip-api.com.

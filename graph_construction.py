@@ -22,7 +22,7 @@ def reset_graph():
     global G
     G.clear()
 
-def build_mtr_graph(df: pd.DataFrame, path_id: int) -> nx.Graph:
+def build_mtr_graph(mtr_result: pd.DataFrame, path_id: int) -> nx.Graph:
     """
     Build an undirected graph from an DataFrame of MTR output. It shows the path traces.
     Consecutive calls will be added to the same graph, cumulatively.
@@ -32,7 +32,7 @@ def build_mtr_graph(df: pd.DataFrame, path_id: int) -> nx.Graph:
 
     previous_ip = None
 
-    for i, row in df.iterrows():
+    for i, row in mtr_result.iterrows():
         ip = row['host'] or f"UNKNOWN_HOST"
 
         # Add node if it doesn't already exist
@@ -102,19 +102,16 @@ def draw_graph(G: nx.Graph, output_file: str):
 
     return
 
-def plot_latency_heatmap(output_file: str, title: str, df: pd.DataFrame):
+def plot_latency_heatmap(output_file: str, title: str, latency_matrix: pd.DataFrame):
     """
     Plots a heatmap of the latency matrix and saves it to the given file path.
     """
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    import numpy as np
 
-    if df.empty:
+    if latency_matrix.empty:
         print("[WARN] Provided latency matrix is empty. Heatmap not generated.")
         return
 
-    plot_df = df.copy().replace({pd.NA: np.nan})
+    plot_df = latency_matrix.copy().replace({pd.NA: np.nan})
     plot_df = plot_df.astype("float64")
 
     plt.figure(figsize=(12, 10))

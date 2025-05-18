@@ -17,6 +17,7 @@ GRAPH_DIR = "./graph_folder"  # Folder to save graphs
 CSV_DIR = "./csv_folder" 
 DESTINATIONS_FILE = os.path.join(CSV_DIR, "destinations.csv")
 DESTINATIONS = pd.read_csv(DESTINATIONS_FILE, header=None)[0].str.strip().tolist()
+TARGET_LIMIT = 5  # Process only the first destinations until this limit.
 
 # === Ensure Output Directory Exists ===
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
     gc.reset_graph()
 
-    for i, dest in enumerate(DESTINATIONS):
+    for i, dest in enumerate(DESTINATIONS[:TARGET_LIMIT]):
         process_mtr_for_destination(dest, i + 1)
 
     pp.symmetrize_latency_matrix()
