@@ -61,7 +61,7 @@ if __name__ == "__main__":
     # Check destination IPs for responsiveness only if needed. Delete the CSV to force re-check.
     filtered_path = "./csv_folder/responsive_hetzner.csv"
     if not os.path.exists(filtered_path):
-        mtr.filter_reachable_ips_with_mtr("./csv_folder/hetzner.csv", limit=50, output_csv=filtered_path)
+        mtr.filter_reachable_ips_with_ping("./csv_folder/hetzner.csv", output_csv=filtered_path)
 
     gc.reset_graph()
 

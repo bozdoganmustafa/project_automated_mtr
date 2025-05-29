@@ -5,8 +5,10 @@ import os
 import csv
 import datetime
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-INTERVAL = 0.1  # MTR interval in seconds
+
+INTERVAL = 1.0  # MTR interval in seconds
 
 # === Run MTR Command for each Destination ===
 def run_mtr(destination: str, output_dir: str, timestamp: str, count: int) -> str:
@@ -111,6 +113,7 @@ def filter_mtr_traces(mtr_result: pd.DataFrame, loss_threshold: float) -> pd.Dat
 
     return mtr_result[mtr_result["loss"] <= loss_threshold].copy()
 
+## Takes too long time. It is not efficient since no need for traceroutes.
 def filter_reachable_ips_with_mtr(input_csv: str, limit: int, output_csv: str):
     """
     Filters a list of IP addresses to find responsive destination IPs using MTR.
@@ -164,3 +167,116 @@ def filter_reachable_ips_with_mtr(input_csv: str, limit: int, output_csv: str):
     else:
         print("[INFO] No responsive IPs found.")
 
+## Querying one-by-one takes too long.
+def filter_reachable_ips_with_ping(input_csv: str, output_csv: str, limit: int = None):
+    """
+    Filters a list of IP addresses to find responsive ones using ping (non-parallel version).
+
+    Parameters:
+    - input_csv: Path to CSV file containing IPs (one per row).
+    - output_csv: File path to save responsive IPs.
+    - limit: Optional integer limit on how many IPs to check.
+    """
+
+    if not os.path.exists(input_csv):
+        print(f"[ERROR] Input file not found: {input_csv}")
+        return
+
+    with open(input_csv, "r") as f:
+        reader = csv.reader(f)
+        ip_list = [row[0].strip().strip('"') for row in reader if row]
+
+    if limit is not None:
+        ip_list = ip_list[:limit]
+
+    responsive_ips = []
+
+    for i, ip in enumerate(ip_list, 1):
+        print(f"[{i}/{len(ip_list)}] Pinging {ip}...", end=' ')
+        try:
+            result = subprocess.run(
+                ["ping", "-c", "1", "-W", "1", ip],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            if result.returncode == 0:
+                print(f"[OK] {ip} is reachable")
+                responsive_ips.append([ip])
+            else:
+                print(f"[FAIL] {ip} is not reachable")
+        except Exception as e:
+            print(f"[ERROR] Failed to ping {ip}: {e}")
+
+        time.sleep(0.2)  # Light throttling
+
+    if responsive_ips:
+        with open(output_csv, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerows(responsive_ips)
+        print(f"\n[SAVED] {len(responsive_ips)} responsive IPs saved to {output_csv}")
+    else:
+        print("[INFO] No responsive IPs found.")
+
+
+
+## Parallelized version using ping does not work properly on WSL2 Ubuntu due to firewall issues (I guess).
+## Most of the Ping requests fails immediately while these IPs are responsive when queryied one-by-one.
+def filter_reachable_ips_with_ping_parallel(input_csv: str, output_csv: str, limit: int = None, max_workers: int = 20):
+    """
+    Filters IPs from a CSV by checking reachability using ping in parallel.
+
+    Args:
+        input_csv: CSV file path containing IPs (one per line, no header).
+        output_csv: File path to write reachable IPs (no header).
+        limit: Optional int, limits the number of IPs to test.
+        max_workers: Number of parallel threads to use.
+    """
+    print(f"[INFO] Reading input destinations from {input_csv}")
+    with open(input_csv, "r") as f:
+        reader = csv.reader(f)
+        destinations = [row[0].strip().strip('"') for row in reader if row]
+
+    if limit is not None:
+        destinations = destinations[:limit]
+
+    print(f"[INFO] Checking reachability of {len(destinations)} IPs using ping...")
+
+    reachable_ips = []
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_ip = {executor.submit(is_ip_reachable, ip): ip for ip in destinations}
+
+        for i, future in enumerate(as_completed(future_to_ip), 1):
+            ip = future_to_ip[future]
+            try:
+                if future.result():
+                    print(f"[OK] {ip} is reachable")
+                    reachable_ips.append([ip])
+                else:
+                    print(f"[FAIL] {ip} is not reachable")
+            except Exception as e:
+                print(f"[ERROR] Exception checking {ip}: {e}")
+
+    # Save results (no header)
+    if reachable_ips:
+        with open(output_csv, "w", newline="") as f_out:
+            writer = csv.writer(f_out)
+            writer.writerows(reachable_ips)
+        print(f"[SAVED] {len(reachable_ips)} reachable IPs to {output_csv}")
+    else:
+        print("[INFO] No reachable IPs found.")
+
+
+def is_ip_reachable(ip: str, count: int = 1, timeout: int = 1) -> bool:
+    """
+    Pings the IP address and returns True if at least one reply is received.
+    """
+    try:
+        result = subprocess.run(
+            ["ping", "-c", str(count), "-W", str(timeout), ip],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
