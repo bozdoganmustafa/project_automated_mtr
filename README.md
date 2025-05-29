@@ -27,8 +27,12 @@ Run the main script to begin automated tracing:
 ```bash
 python3 process_manager.py
 ```
-Process is expected to run 1-2 minutes due to mtr cycles and IP look-ups. 
+Process is expected to run several minutes due to mtr cycles and IP look-ups. 
 Processing time may vary depending on the number of destinations and the length of the paths.
+If Interval parameter in automated_mtr.py is set to a value lower than 1.0, script needed to start with root privileges.
+```bash
+sudo -E python3 process_manager.py
+```
 
 ## Important Notes
 - The project focuses on destinations located in **Europe** and the **USA**.
