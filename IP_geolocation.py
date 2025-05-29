@@ -1,7 +1,54 @@
 import pandas as pd
 import requests
 import time
+from ipaddress import ip_address, ip_network
 
+
+## Currently, a deficient function since downloaded IPinfo database lacks of latitude and longitude.
+def find_geolocation_by_ipinfo_database(mtr_result: pd.DataFrame, db_path: str) -> pd.DataFrame:
+    """
+    Enrich MTR result with geolocation info from a local IPinfo-style CSV database.
+    db_path: path to the CSV containing IP blocks and location info.
+    Expected columns in DB:
+        - network (CIDR), country, region, city, latitude, longitude, org (optional), asn (optional)
+    """
+    # Load local geolocation DB once
+    geo_db = pd.read_csv(db_path)
+    geo_db["network"] = geo_db["network"].apply(ip_network)
+
+    # Initialize columns if missing
+    for col in ["latitude", "longitude", "country", "region", "city", "org"]:
+        if col not in mtr_result.columns:
+            mtr_result[col] = None
+
+    for idx, row in mtr_result.iterrows():
+        ip = row["host"]
+        if not is_valid_ip(ip):
+            continue
+
+        ip_obj = ip_address(ip)
+        match = geo_db[geo_db["network"].apply(lambda net: ip_obj in net)]
+
+        if not match.empty:
+            matched_row = match.iloc[0]
+            mtr_result.at[idx, "latitude"] = matched_row.get("latitude")
+            mtr_result.at[idx, "longitude"] = matched_row.get("longitude")
+            mtr_result.at[idx, "country"] = matched_row.get("country")
+            mtr_result.at[idx, "region"] = matched_row.get("region")
+            mtr_result.at[idx, "city"] = matched_row.get("city")
+
+            org = matched_row.get("org", "")
+            if org:
+                mtr_result.at[idx, "org"] = org
+                if row["ASN"] in [None, "", "N/A", "AS???"] and "AS" in org:
+                    mtr_result.at[idx, "ASN"] = org.split(" ")[0]
+
+        # Optional light throttle
+        time.sleep(0.01)
+
+    return mtr_result
+
+## It uses ipinfo API. We need to use the database instead.
 def find_geolocation_by_ipinfo(mtr_result: pd.DataFrame, token: str = None) -> pd.DataFrame:
     """
     Add geolocation fields to the MTR DataFrame using IPinfo API.

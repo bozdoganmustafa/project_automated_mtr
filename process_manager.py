@@ -24,6 +24,8 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(CSV_DIR, exist_ok=True)
 os.makedirs(GRAPH_DIR, exist_ok=True)
 
+IPGEOLOCATION_DB_DIR = "geolocation_db/ipinfo_lite.csv.gz"
+
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
 def process_mtr_for_destination(destination: str, iteration_number: int):
