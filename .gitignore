@@ -48,3 +48,7 @@ dist/
 *.bak
 *.swp
 *.tmp
+
+# Database file for geolocation
+geolocation_db/*
+!geolocation_db/.keep
