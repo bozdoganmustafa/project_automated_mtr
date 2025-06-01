@@ -89,7 +89,7 @@ def analyze_mtr_trace(mtr_result: pd.DataFrame, destination: str, alert_threshol
     print(f"\n=== Full Hop Summary for {destination} ===")
     print(mtr_result.to_string(index=False))
 
-    # === Filter High Packet Loss Hops ===
+    # === Display High Packet Loss Hops ===
     high_loss = mtr_result[mtr_result["loss"] > alert_threshold]
     if not high_loss.empty:
         print(f"\n=== Hops with High Packet Loss (> {alert_threshold}%) ===")
@@ -110,8 +110,7 @@ def filter_mtr_traces(mtr_result: pd.DataFrame, loss_threshold: float) -> pd.Dat
     """
     if mtr_result is None or mtr_result.empty:
         return mtr_result
-
-    return mtr_result[mtr_result["loss"] <= loss_threshold].copy()
+    return mtr_result[mtr_result["loss"] <= loss_threshold].copy().reset_index(drop=True)
 
 ## Takes too long time. It is not efficient since no need for traceroutes.
 def filter_reachable_ips_with_mtr(input_csv: str, limit: int, output_csv: str):
