@@ -1,0 +1,53 @@
+import os
+import pandas as pd
+import automated_mtr as mtr
+import datetime
+import post_process as pp
+
+
+# === Configuration ===
+PING_CYCLES = 5                   # Number of pings per hop
+OUTPUT_DIR = "./mtr_logs"         # Folder to save logs
+ALERT_LOSS_THRESHOLD = 10.0       # % packet loss to flag a hop
+TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+CSV_DIR = "./vm_csv_folder" 
+DESTINATIONS_FILE = os.path.join(CSV_DIR, "responsive_hetzner.csv")
+DESTINATIONS = pd.read_csv(DESTINATIONS_FILE, header=None)[0].astype(str).str.strip().tolist()
+TARGET_LIMIT = 5  # Process only the first destinations until this limit.
+
+def process_mtr_for_destination(destination: str, iteration_number: int):
+    """
+    Full pipeline for one destination.
+    Collect latencies and create extend Latency Matrix File.
+    """
+    filepath = mtr.run_mtr(destination, OUTPUT_DIR, TIMESTAMP, PING_CYCLES)
+    if filepath:
+        df_mtr_result = mtr.parse_mtr_json(filepath, iteration_number)
+        if df_mtr_result is not None and not df_mtr_result.empty:
+            mtr.analyze_mtr_trace(df_mtr_result, destination, ALERT_LOSS_THRESHOLD)
+            df_mtr_result = mtr.filter_mtr_traces(df_mtr_result, 99.0)
+            pp.update_explored_nodes(df_mtr_result)
+            pp.ensure_latency_matrix_square(pp.get_explored_nodes_df())
+            pp.update_latency_matrix_for_source_node(df_mtr_result)
+            pp.update_latency_matrix_for_traversed_hops(df_mtr_result)
+        # Optional: cleanup temporary JSON files
+        os.remove(filepath)
+
+# ---------- main : Start of Run Script ------------
+if __name__ == "__main__":
+    ## TODO Start with the saved Latency Matrix file if available.
+    ## TODO: Start with the existing explored nodes file if available.
+
+    ## TODO: Explored nodes should not include geolocation for VMS. Only IPs for full latency matrix.
+    ## TODO: Latency Matrix should have Node_IPs instead of Node_IDs.
+
+    for i, dest in enumerate(DESTINATIONS[:TARGET_LIMIT]):
+        process_mtr_for_destination(dest, i + 1)
+
+    pp.get_explored_nodes_df().to_csv(os.path.join(CSV_DIR, "explored_nodes.csv"))
+    pp.get_latency_matrix().to_csv(os.path.join(CSV_DIR, "latency_matrix.csv"))
+
+    ## Define new functions
+    ## Put into a new class: DataRegularizer // Latency Matrix Regularizer Similar to post_process.py
+    ## A matrix with list of values as stringfied floats.

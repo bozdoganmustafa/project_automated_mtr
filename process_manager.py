@@ -5,7 +5,6 @@ import IP_geolocation as geo
 import automated_mtr as mtr
 import datetime
 import post_process as pp
-import time
 
 TOKEN_IPINFO = "34f1e6afbef803"  # Personal IP Info token for "Lite" plan.
 
@@ -16,8 +15,8 @@ ALERT_LOSS_THRESHOLD = 10.0       # % packet loss to flag a hop
 GRAPH_DIR = "./graph_folder"  # Folder to save graphs
 
 CSV_DIR = "./csv_folder" 
-DESTINATIONS_FILE = os.path.join(CSV_DIR, "destinations.csv")
-DESTINATIONS = pd.read_csv(DESTINATIONS_FILE, header=None)[0].str.strip().tolist()
+DESTINATIONS_FILE = os.path.join(CSV_DIR, "responsive_hetzner.csv")
+DESTINATIONS = pd.read_csv(DESTINATIONS_FILE, header=None)[0].astype(str).str.strip().tolist()
 TARGET_LIMIT = 5  # Process only the first destinations until this limit.
 
 # === Ensure Output Directory Exists ===
