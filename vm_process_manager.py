@@ -3,6 +3,8 @@ import pandas as pd
 import automated_mtr as mtr
 import datetime
 import vm_post_process as vm_pp
+import argparse
+
 
 # === Configuration ===
 PING_CYCLES = 5                   # Number of pings per hop
@@ -50,6 +52,14 @@ def process_mtr_for_destination(destination: str, iteration_number: int):
 
 # ---------- main : Start of Run Script ------------
 if __name__ == "__main__":
+    # Command-line arguments
+    parser = argparse.ArgumentParser(description="Run MTR processing with a target limit.")
+    parser.add_argument("--limit", type=int, default=5, help="Number of destinations to process")
+    args = parser.parse_args()
+
+    TARGET_LIMIT = args.limit  # Use command-line argument instead of hardcoded value
+
+
     ## Start with the saved Latency Matrix file if available.
     ## Start with the existing explored nodes file if available.
 

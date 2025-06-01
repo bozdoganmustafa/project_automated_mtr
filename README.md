@@ -37,20 +37,30 @@ source venv/bin/activate
 . venv/bin/activate
 ```
 
-Run the main script to begin automated tracing:
+Run the main script to begin automated tracing.
 ```bash
-python3 process_manager.py
+python3 vm_process_manager.py
 ```
+Optionally with a limit of destination targets (Default=5):
+```bash
+python3 vm_process_manager.py --limit 15
+```
+
 Process is expected to run several minutes due to mtr cycles and IP look-ups. 
 Processing time may vary depending on the number of destinations and the length of the paths.
 If Interval parameter in automated_mtr.py is set to a value lower than 1.0, script needed to start with root privileges.
 ```bash
-sudo -E python3 process_manager.py
+sudo -E python3 vm_process_manager.py
 ```
 
 Deactivate venv if it is active:
 ```bash
 deactivate
+```
+
+From Host machine:
+```bash
+python3 process_manager.py
 ```
 
 ## Important Notes
