@@ -1,4 +1,3 @@
-os
 pandas
 networkx
 matplotlib
