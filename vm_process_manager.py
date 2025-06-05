@@ -4,6 +4,7 @@ import automated_mtr as mtr
 import datetime
 import vm_post_process as vm_pp
 import argparse
+import utils as utils
 
 
 # === Configuration ===
@@ -54,35 +55,41 @@ def process_mtr_for_destination(destination: str, iteration_number: int):
 if __name__ == "__main__":
     # Command-line arguments
     parser = argparse.ArgumentParser(description="Run MTR processing with a target limit.")
-    parser.add_argument("--limit", type=int, default=5, help="Number of destinations to process")
+    parser.add_argument("--limit", type=int, default=TARGET_LIMIT, help="Number of destinations to process")
     args = parser.parse_args()
 
     TARGET_LIMIT = args.limit  # Use command-line argument instead of hardcoded value
 
+    # Create a folder specific to current VM for CSV results.
+    own_ip = utils.find_own_public_ipv4() 
+    if not own_ip:
+        raise RuntimeError("Could not determine public IP address.")
+    # Convert IP to folder name format
+    folder_name = own_ip.replace('.', '_')
+    machine_dir = os.path.join(VM_CSV_DIR, folder_name)
+    os.makedirs(machine_dir, exist_ok=True) 
 
-    ## Start with the saved Latency Matrix file if available.
-    ## Start with the existing explored nodes file if available.
-
-    ## Explored nodes need not to include geolocation for VMS. Just set of IPs for complete latency matrix.
+    ## Load existing Explored Nodes file if available.
+    ## Load existing Latency Matrix file if available.
+    ## Explored nodes includes only set of IPs for complete latency matrix (no geolocation at VM side).
     ## Latency Matrix should have Node_IPs instead of Node_IDs.
-    
-    EXPLORED_NODES_FILE = os.path.join(VM_CSV_DIR, "vm_explored_nodes.csv")
-    LATENCY_MATRIX_FILE = os.path.join(VM_CSV_DIR, "vm_latency_matrix.csv")
-
+    EXPLORED_NODES_FILE = os.path.join(machine_dir, "vm_explored_nodes.csv")
+    LATENCY_MATRIX_FILE = os.path.join(machine_dir, "vm_latency_matrix.csv")
     if os.path.exists(EXPLORED_NODES_FILE):
         vm_pp.load_explored_nodes(EXPLORED_NODES_FILE)
-
     if os.path.exists(LATENCY_MATRIX_FILE):
         vm_pp.load_latency_matrix(LATENCY_MATRIX_FILE)
 
+    # Loop over the destinations and process mtr except for own IP address.
     for i, dest in enumerate(DESTINATIONS[:TARGET_LIMIT]):
+        if dest == own_ip:
+            continue
         process_mtr_for_destination(dest, i + 1)
 
-    vm_pp.symmetrize_latency_matrix() # Generic behavior.
+    vm_pp.symmetrize_latency_matrix()
 
     vm_pp.get_explored_nodes_df().to_csv(EXPLORED_NODES_FILE, index=False)
     vm_pp.get_latency_matrix().to_csv(LATENCY_MATRIX_FILE)
 
-
     ## Put into a new class: DataRegularizer // Latency Matrix Regularizer Similar to post_process.py
-    ## Define a new matrix with list of values as stringfied floats. So that, each mtr result can be stored cumulatively.
+    ## Define a new matrix with list of values as stringfied floats. So that, each measurement results at different times can be stored cumulatively.
