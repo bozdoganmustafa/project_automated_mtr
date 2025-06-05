@@ -111,6 +111,7 @@ def is_valid_ip(ip: str) -> bool:
     import re
     return re.match(r"^\d{1,3}(\.\d{1,3}){3}$", ip) is not None
 
+
 def update_latency_matrix_for_source_node(mtr_result: pd.DataFrame):
     """
     Update global latency_matrix with latencies from each MTR result mtr_result.
@@ -132,38 +133,24 @@ def update_latency_matrix_for_source_node(mtr_result: pd.DataFrame):
     if not is_valid_ip(src_ip):
         return  # skip if source IP is not valid
     
-    latencies = []
-    for _, row in mtr_result.iterrows():
-        avg = row.get("avg", None)
-        stdev = row.get("stdev", None)
-        if avg is None or stdev is None:
-            latencies.append(None)
-        else:
-            latencies.append(avg - stdev)
+    latencies = extract_smoothed_latencies(mtr_result)
 
-    # Monotonic increase by smoothing
-    smoothed = []
-    prev = 0
-    for val in latencies:
-        if val is None:
-            smoothed.append(None)
-            continue
-        val = max(val, prev)
-        smoothed.append(val)
-        prev = val
+    # Monotonic increase (non-decreasing) by smoothing
+    latencies = enforce_monotonic_increase(latencies)
 
     # Fill values from source to all hops
     for i in range(1, len(mtr_result)): # skip first row (source)
         dst_ip = mtr_result.iloc[i]["host"]
         if not is_valid_ip(dst_ip):
             continue
-        latency = smoothed[i]
+        latency = latencies[i]
         if latency is None:
             continue
 
         current = latency_matrix.at[src_ip, dst_ip]
         if pd.isna(current) or latency < current:
             latency_matrix.at[src_ip, dst_ip] = latency
+
 
 def update_latency_matrix_for_traversed_hops(mtr_result: pd.DataFrame):
     """
@@ -182,24 +169,9 @@ def update_latency_matrix_for_traversed_hops(mtr_result: pd.DataFrame):
     mtr_result = mtr_result.reset_index(drop=True)
 
     # Compute smoothed latencies
-    latencies = []
-    for _, row in mtr_result.iterrows():
-        avg = row.get("avg", None)
-        stdev = row.get("stdev", None)
-        if avg is None or stdev is None:
-            latencies.append(None)
-        else:
-            latencies.append(avg - stdev)
+    latencies = extract_smoothed_latencies(mtr_result)
 
-    smoothed_latencies = []
-    prev = 0
-    for val in latencies:
-        if val is None:
-            smoothed_latencies.append(None)
-            continue
-        val = max(val, prev)  # Enforce monotonic increase
-        smoothed_latencies.append(val)
-        prev = val
+    latencies = enforce_monotonic_increase(latencies)
 
     # Loop over consecutive hops
     for i in range(len(mtr_result) - 1):
@@ -209,8 +181,8 @@ def update_latency_matrix_for_traversed_hops(mtr_result: pd.DataFrame):
         if not is_valid_ip(src_ip) or not is_valid_ip(dst_ip):
             continue
 
-        src_latency = smoothed_latencies[i]
-        dst_latency = smoothed_latencies[i + 1]
+        src_latency = latencies[i]
+        dst_latency = latencies[i + 1]
 
         if src_latency is None or dst_latency is None:
             continue
@@ -221,6 +193,31 @@ def update_latency_matrix_for_traversed_hops(mtr_result: pd.DataFrame):
         if pd.isna(current) or delta_latency < current:
             latency_matrix.at[src_ip, dst_ip] = delta_latency
 
+# Extracts latencies from MTR result as avg - stdev.
+def extract_smoothed_latencies(mtr_result: pd.DataFrame) -> list:
+    """
+    Extracts latencies from MTR result as avg - stdev.
+    The first row (assumed to be the source) is set to 0.
+    """
+    latencies = []
+    for i, row in enumerate(mtr_result.itertuples(index=False)):
+        avg = getattr(row, "avg", None)
+        stdev = getattr(row, "stdev", None)
+        if i == 0:
+            latencies.append(0)  # Force source latency to 0
+        elif avg is None or stdev is None:
+            latencies.append(None)
+        else:
+            latencies.append(max(0.0, avg - stdev))  # Ensure non-negative latency
+    return latencies
+
+# Ensure non-decreasing list by lowering previous higher values.
+def enforce_monotonic_increase(values):
+    latencies = values.copy()
+    for i in range(len(latencies) - 2, -1, -1):  # Start from second-last going backwards
+        if latencies[i] is not None and latencies[i + 1] is not None:
+            latencies[i] = min(latencies[i], latencies[i + 1])
+    return latencies
 
 def symmetrize_latency_matrix():
     """
@@ -258,5 +255,4 @@ def symmetrize_matrix(mtr_result: pd.DataFrame) -> pd.DataFrame:
                 min_val = min(val_ij, val_ji)
                 result.at[i, j] = min_val
                 result.at[j, i] = min_val
-
     return result

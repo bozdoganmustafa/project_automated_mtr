@@ -15,7 +15,7 @@ def find_own_public_ipv4() -> str:
         for ip_str in ip_list:
             try:
                 ip = ipaddress.ip_address(ip_str)
-                if ip.version == 4 and not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved):
+                if ip.version == 4: # Checking is ignored for now # and not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved):
                     print(f"[INFO] Detected public IPv4 address: {ip}")
                     return str(ip)
             except ValueError:
