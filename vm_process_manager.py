@@ -16,7 +16,7 @@ TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 CSV_DIR = "./csv_folder"
 DESTINATIONS_FILE = os.path.join(CSV_DIR, "responsive_hetzner.csv")
 DESTINATIONS = pd.read_csv(DESTINATIONS_FILE, header=None)[0].astype(str).str.strip().tolist()
-TARGET_LIMIT = 5  # Process only the first destinations until this limit.
+TARGET_LIMIT = 3  # Process only the first destinations until this limit.
 
 VM_CSV_DIR = "./vm_csv_folder" # For experiment results as CSV
 
