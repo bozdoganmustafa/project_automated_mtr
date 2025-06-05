@@ -134,9 +134,11 @@ def update_latency_matrix_for_source_node(mtr_result: pd.DataFrame):
         return  # skip if source IP is not valid
     
     latencies = extract_smoothed_latencies(mtr_result)
+    print("After extract_smoothed_latencies:", latencies)
 
     # Monotonic increase (non-decreasing) by smoothing
     latencies = enforce_monotonic_increase(latencies)
+    print("After enforce_monotonic_increase:", latencies, "\n")
 
     # Fill values from source to all hops
     for i in range(1, len(mtr_result)): # skip first row (source)
