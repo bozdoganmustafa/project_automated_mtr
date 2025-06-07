@@ -5,6 +5,8 @@ import IP_geolocation as geo
 import automated_mtr as mtr
 import datetime
 import post_process as pp
+import glob
+
 
 TOKEN_IPINFO = "34f1e6afbef803"  # Personal IP Info token for "Lite" plan.
 
@@ -27,6 +29,8 @@ os.makedirs(GRAPH_DIR, exist_ok=True)
 IPGEOLOCATION_DB_DIR = "geolocation_db/ipinfo_lite.csv"
 
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+VM_CSV_DIR = "./vm_csv_folder" # For experiment results as CSV
 
 def process_mtr_for_destination(destination: str, iteration_number: int):
     """
@@ -58,9 +62,11 @@ if __name__ == "__main__":
     """
 
     # Check destination IPs for responsiveness only if needed. Delete the CSV to force re-check.
+    """
     filtered_path = "./csv_folder/responsive_hetzner.csv"
     if not os.path.exists(filtered_path):
         mtr.filter_reachable_ips_with_ping("./csv_folder/hetzner.csv", output_csv=filtered_path)
+    
 
     gc.reset_graph()
 
@@ -93,3 +99,50 @@ if __name__ == "__main__":
         title="Symmetrized Latency Heatmap",
         latency_matrix=pp.get_latency_matrix()
     )
+    """
+    # New pipeline
+    # Synchronize processes for VMs. 
+    # After triggering all VMs, fetch the results from each VM and update the global structures.
+    # For development purposes, start with reading them from local folders of VMs.
+    # Store an up-to-date Extended Explored Nodes and merge with new explored nodes from VMs.
+    # Attach geolocation to the Extended Explored Nodes.
+    # Get all latency matrices from VMs, and merge as Overall Latency Matrix.
+    EXT_NODES_FILE = os.path.join(CSV_DIR, "extended_explored_nodes.csv")
+    if os.path.exists(EXT_NODES_FILE):
+        pp.load_extended_explored_nodes(EXT_NODES_FILE)
+
+    # Traverse all subfolders under ./vm_csv_folder looking for vm_explored_nodes.csv
+    vm_nodes_files = glob.glob(VM_CSV_DIR + "/**/vm_explored_nodes.csv", recursive=True)
+
+    # Before looking for geo, filter existing IPs.
+    for vm_file in vm_nodes_files:
+        print(f" Processing VM data file: {vm_file}")
+        vm_nodes = pp.load_vm_nodes(vm_file)
+        # Eliminate already known nodes
+        vm_nodes = pp.eliminate_existing_nodes(vm_nodes)
+        if not vm_nodes.empty:
+            vm_nodes_with_geolocation = geo.find_geolocation_for_nodes(vm_nodes, TOKEN_IPINFO)
+            pp.update_extended_explored_nodes(vm_nodes_with_geolocation)
+
+    pp.save_extended_explored_nodes(EXT_NODES_FILE)
+
+    """
+    # Find Geolocations for responsive_hetzner.csv  
+    responsive_path = os.path.join(CSV_DIR, "responsive_hetzner.csv")
+    responsive_with_geo_path = os.path.join(CSV_DIR, "responsive_hetzner_with_geolocation.csv")
+
+    if os.path.exists(responsive_path):
+        responsive_df = pd.read_csv(responsive_path, header=None, names=["IP_address"])
+        
+        # Use your existing function to add geolocation info
+        responsive_with_geo = geo.find_geolocation_for_nodes(responsive_df, TOKEN_IPINFO)
+        
+        # Save the enriched file
+        responsive_with_geo.to_csv(responsive_with_geo_path, index=False)
+        print(f" Saved enriched Hetzner IPs to: {responsive_with_geo_path}")
+    """
+
+
+
+
+

@@ -9,25 +9,127 @@ import IP_geolocation as geo
 latency_matrix = pd.DataFrame()
 
 # Global list of Nodes for all hops with valid IP address in the traces.
-explored_nodes_df = pd.DataFrame(columns=[
+extended_explored_nodes = pd.DataFrame(columns=[
     "node_id", "IP_address", "ASN", "latitude", "longitude", "city", "region", "country"
 ])
 next_node_id = [0]  # Mutable counter
 
-def get_explored_nodes_df():
-    return explored_nodes_df
+def get_extended_explored_nodes():
+    return extended_explored_nodes
 
 def get_latency_matrix():
     return latency_matrix
 
+def load_extended_explored_nodes(file_path: str):
+    """
+    Loads extended explored nodes (with node_id and geolocation) from a CSV file
+    into the global extended_explored_nodes. Expects 'node_id' to be the index.
+    """
+    global extended_explored_nodes
+    df = pd.read_csv(file_path, index_col="node_id")
+
+    required_cols = ["IP_address", "ASN", "latitude", "longitude", "city", "region", "country"]
+    for col in required_cols:
+        if col not in df.columns:
+            raise ValueError(f"Missing required column: {col}")
+
+    extended_explored_nodes = df
+
+    print(f" Loaded extended explored nodes from {file_path}, total: {len(extended_explored_nodes)}")
+
+
+def save_extended_explored_nodes(file_path: str):
+    """
+    Saves the extended_explored_nodes to a CSV file with a clean, ordered index as 'node_id'.
+    """
+    global extended_explored_nodes
+
+    # Reset and reassign node IDs to be continuous and start from 0
+    extended_explored_nodes = extended_explored_nodes.reset_index(drop=True)
+    extended_explored_nodes.index.name = "node_id"
+
+    extended_explored_nodes.to_csv(file_path)
+    print(f" Saved extended explored nodes to {file_path}, total: {len(extended_explored_nodes)}")
+
+
+def load_vm_nodes(filepath: str) -> pd.DataFrame:
+    """
+    Loads VM node IPs from a given CSV file and returns a DataFrame.
+    Expects a column named 'IP_address'.
+    """
+    df = pd.read_csv(filepath)
+
+    if "IP_address" not in df.columns:
+        raise ValueError("Missing required 'IP_address' column in the file.")
+
+    return df.dropna(subset=["IP_address"]).reset_index(drop=True)
+
+
+def update_extended_explored_nodes(vm_nodes_with_geo: pd.DataFrame):
+    """
+    Updates the global extended_explored_nodes (extended_explored_nodes) with any new IPs from vm_nodes_with_geo.
+    Assigns incremental node_id and preserves index.
+    """
+    global extended_explored_nodes
+
+    if extended_explored_nodes.empty:
+        extended_explored_nodes = pd.DataFrame(columns=[
+            "IP_address", "ASN", "latitude", "longitude", "city", "region", "country"
+        ]).set_index(pd.Index([], name="node_id"))
+
+    existing_ips = set(extended_explored_nodes["IP_address"])
+    next_id = extended_explored_nodes.index.max() + 1 if not extended_explored_nodes.empty else 0
+
+    new_entries = []
+
+    for _, row in vm_nodes_with_geo.iterrows():
+        ip = row["IP_address"]
+        if ip in existing_ips:
+            continue
+
+        new_entry = {
+            "node_id": next_id,
+            "IP_address": ip,
+            "ASN": row.get("ASN"),
+            "latitude": row.get("latitude"),
+            "longitude": row.get("longitude"),
+            "city": row.get("city"),
+            "region": row.get("region"),
+            "country": row.get("country")
+        }
+        new_entries.append(new_entry)
+        next_id += 1
+
+    if new_entries:
+        new_df = pd.DataFrame(new_entries).set_index("node_id")
+        extended_explored_nodes = pd.concat([extended_explored_nodes, new_df])
+        extended_explored_nodes.sort_index(inplace=True)
+
+
+def eliminate_existing_nodes(vm_nodes: pd.DataFrame) -> pd.DataFrame:
+    """
+    Removes nodes from vm_nodes that already exist in extended_explored_nodes (by IP_address).
+    """
+    global extended_explored_nodes
+
+    if extended_explored_nodes.empty:
+        return vm_nodes.copy()
+
+    existing_ips = set(extended_explored_nodes["IP_address"])
+    filtered_nodes = vm_nodes[~vm_nodes["IP_address"].isin(existing_ips)].reset_index(drop=True)
+    return filtered_nodes
+
+
+### --- Below are out-dated functions. --- ###
+
 def update_explored_nodes(mtr_result: pd.DataFrame):
     """
-    Assign node_IDs for each explored node/hop in MTR traces and store metadata (IP, geolocation) in the global explored_nodes_df.
+    Assign node_IDs for each explored node/hop in MTR traces and store metadata (IP, geolocation) in the global extended_explored_nodes.
     Avoids duplicate entries based on IP_address.
     """
-    global explored_nodes_df
+    global extended_explored_nodes
 
-    existing_ips = set(explored_nodes_df["IP_address"]) if not explored_nodes_df.empty else set()
+    existing_ips = set(extended_explored_nodes["IP_address"]) if not extended_explored_nodes.empty else set()
 
     for _, row in mtr_result.iterrows():
         ip = row["host"]
@@ -44,26 +146,28 @@ def update_explored_nodes(mtr_result: pd.DataFrame):
             "region": row.get("region"),
             "country": row.get("country")
         }
-        explored_nodes_df = pd.concat([explored_nodes_df, pd.DataFrame([new_entry])], ignore_index=True)
+        extended_explored_nodes = pd.concat([extended_explored_nodes, pd.DataFrame([new_entry])], ignore_index=True)
         next_node_id[0] += 1
 
+
+
 def get_node_id(IP_address: str) -> int | None:
-    entry = explored_nodes_df[explored_nodes_df["IP_address"] == IP_address]
+    entry = extended_explored_nodes[extended_explored_nodes["IP_address"] == IP_address]
     return entry["node_id"].values[0] if not entry.empty else None
 
 def finalize_explored_nodes_index():
     """
-    Sets 'node_id' as the index of explored_nodes_df if not already.
+    Sets 'node_id' as the index of extended_explored_nodes if not already.
     Should be called after all node discovery is done.
     """
-    global explored_nodes_df
+    global extended_explored_nodes
 
-    if not explored_nodes_df.empty and explored_nodes_df.index.name != "node_id":
-        if "node_id" in explored_nodes_df.columns:
-            explored_nodes_df.set_index("node_id", inplace=True)
-            print("[INFO] Set 'node_id' as index for explored_nodes_df.")
+    if not extended_explored_nodes.empty and extended_explored_nodes.index.name != "node_id":
+        if "node_id" in extended_explored_nodes.columns:
+            extended_explored_nodes.set_index("node_id", inplace=True)
+            print(" Set 'node_id' as index for extended_explored_nodes.")
         else:
-            print("[WARNING] 'node_id' column not found in explored_nodes_df.")
+            print("[WARNING] 'node_id' column not found in extended_explored_nodes.")
 
 def update_latency_matrix_for_source_node(mtr_result: pd.DataFrame):
     """

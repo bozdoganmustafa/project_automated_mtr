@@ -23,6 +23,12 @@ Optionally create a virtual environment:
 python3 -m venv venv
 ```
 
+Activate venv if you have set (Bash or sh):
+```bash
+source venv/bin/activate
+. venv/bin/activate
+```
+
 Ensure all dependencies are installed:
 ```bash
 pip install --upgrade pip
@@ -37,7 +43,7 @@ source venv/bin/activate
 . venv/bin/activate
 ```
 
-Run the main script to begin automated tracing.
+Run the main script to begin automated data collection.
 ```bash
 python3 vm_process_manager.py
 ```
