@@ -110,10 +110,22 @@ if __name__ == "__main__":
     
     pp.get_overall_latency_matrix().to_csv(os.path.join(CSV_DIR, "overall_latency_matrix.csv"))
 
+    # Compute and save residuals
+    pp.generate_residual_latency_matrix()
+    pp.get_residual_latency_matrix().to_csv(os.path.join(CSV_DIR, "residual_latency_matrix.csv"))
+
     # === Plot latency heatmap
     heatmap_path = os.path.join(GRAPH_DIR, f"overall_latency_heatmap__{TIMESTAMP}.png")
     gc.plot_latency_heatmap(
         output_file=heatmap_path,
         title="Overall Latency Matrix Heatmap",
         latency_matrix=pp.get_overall_latency_matrix()
-    )   
+    )
+
+    # === Plot residual latency heatmap
+    residual_heatmap_path = os.path.join(GRAPH_DIR, f"residual_latency_heatmap__{TIMESTAMP}.png")
+    gc.plot_latency_heatmap(
+        output_file=residual_heatmap_path,
+        title="Residual Latency Matrix Heatmap",
+        latency_matrix=pp.get_residual_latency_matrix()
+    )

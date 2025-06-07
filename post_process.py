@@ -1,5 +1,6 @@
 import pandas as pd
 import IP_geolocation as geo
+from geopy.distance import geodesic
 
 # Shared Global Structures
 
@@ -200,22 +201,83 @@ def symmetrize_matrix(matrix: pd.DataFrame) -> pd.DataFrame:
                 min_val = min(val_ij, val_ji)
                 result.at[i, j] = min_val
                 result.at[j, i] = min_val
-
+                
     return result
 
 
-### --- Below are out-dated functions. --- ###
-
-def finalize_explored_nodes_index():
+def generate_residual_latency_matrix():
     """
-    Sets 'node_id' as the index of extended_explored_nodes if not already.
-    Should be called after all node discovery is done.
+    Generate a matrix that shows residual latency: observed - theoretical_min.
+    Only computes for IP pairs with valid observed latency and known geo info.
     """
-    global extended_explored_nodes
+    global residual_latency_matrix
 
-    if not extended_explored_nodes.empty and extended_explored_nodes.index.name != "node_id":
-        if "node_id" in extended_explored_nodes.columns:
-            extended_explored_nodes.set_index("node_id", inplace=True)
-            print(" Set 'node_id' as index for extended_explored_nodes.")
-        else:
-            print("[WARNING] 'node_id' column not found in extended_explored_nodes.")
+    extended_nodes = get_extended_explored_nodes()
+    ip_to_geo = {
+        row["IP_address"]: (row["latitude"], row["longitude"])
+        for _, row in extended_nodes.iterrows()
+        if pd.notna(row["latitude"]) and pd.notna(row["longitude"])
+    }
+
+    overall_matrix = get_overall_latency_matrix()
+    ips = extended_nodes["IP_address"].dropna().unique()
+
+    # Initialize square matrix
+    residual_latency_matrix = pd.DataFrame(index=ips, columns=ips, dtype=float)
+
+    for src_ip in ips:
+        for dst_ip in ips:
+            if src_ip == dst_ip:
+                residual_latency_matrix.at[src_ip, dst_ip] = 0.0
+                continue
+
+            try:
+                observed = overall_matrix.at[src_ip, dst_ip]
+            except KeyError:
+                continue
+
+            if pd.isna(observed):
+                continue
+
+            if src_ip not in ip_to_geo or dst_ip not in ip_to_geo:
+                continue
+
+            lat1, lon1 = ip_to_geo[src_ip]
+            lat2, lon2 = ip_to_geo[dst_ip]
+            distance = calculate_geodesic_distance(lat1, lon1, lat2, lon2)
+            theoretical_min = calculate_theoretical_minimum_latency(distance)
+
+            if theoretical_min is None:
+                continue
+
+            residual = observed - theoretical_min
+            residual_latency_matrix.at[src_ip, dst_ip] = round(max(residual, 0), 3)
+
+    print("[INFO] Residual latency matrix generated.")
+
+def get_residual_latency_matrix():
+    global residual_latency_matrix
+    return residual_latency_matrix
+
+
+def calculate_geodesic_distance(lat1, lon1, lat2, lon2) -> float:
+    """
+    Returns the geodesic distance (in kilometers) between two lat/lon coordinates.
+    """
+    try:
+        return geodesic((lat1, lon1), (lat2, lon2)).kilometers
+    except Exception as e:
+        print(f"[WARNING] Failed to compute geodesic distance: {e}")
+        return None
+
+def calculate_theoretical_minimum_latency(distance_km: float) -> float:
+    """
+    Calculate theoretical round-trip latency in milliseconds.
+    Assumes 2/3 speed of light in fiber (~200,000 km/s).
+    Round-trip: 2 * one-way.
+    """
+    if distance_km is None:
+        return None
+    speed_km_per_s = 200_000  # 2/3 of light speed
+    latency_sec = (2 * distance_km) / speed_km_per_s
+    return latency_sec * 1000  # Convert to ms
