@@ -4,6 +4,61 @@ import time
 from ipaddress import ip_address, ip_network
 
 
+def find_geolocation_for_nodes(vm_nodes: pd.DataFrame, token: str = None) -> pd.DataFrame:
+    """
+    Adds geolocation fields to a list of IPs in a DataFrame using the IPinfo API.
+    Input: vm_nodes must have a column 'IP_address'.
+    Output: Same DataFrame with columns: ASN, latitude, longitude, city, region, country.
+    """
+    nodes_with_geolocation = vm_nodes.copy()
+    for col in ["ASN", "latitude", "longitude", "city", "region", "country", "org"]:
+        if col not in nodes_with_geolocation.columns:
+            nodes_with_geolocation[col] = None
+
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+
+    for idx, row in nodes_with_geolocation.iterrows():
+        ip = row["IP_address"]
+
+        if not is_valid_ip(ip):
+            continue
+
+        try:
+            url = f"https://ipinfo.io/{ip}/json"
+            response = requests.get(url, headers=headers, timeout=5)
+            data = response.json()
+
+            # Parse location
+            loc = data.get("loc", "")
+            lat, lon = (None, None)
+            if loc:
+                try:
+                    lat, lon = map(float, loc.split(","))
+                except ValueError:
+                    pass
+
+            nodes_with_geolocation.at[idx, "latitude"] = lat
+            nodes_with_geolocation.at[idx, "longitude"] = lon
+            nodes_with_geolocation.at[idx, "country"] = data.get("country")
+            nodes_with_geolocation.at[idx, "region"] = data.get("region")
+            nodes_with_geolocation.at[idx, "city"] = data.get("city")
+
+            org_field = data.get("org", "")
+            nodes_with_geolocation.at[idx, "org"] = org_field
+
+            if org_field.startswith("AS"):
+                nodes_with_geolocation.at[idx, "ASN"] = org_field.split(" ")[0]
+            else:
+                nodes_with_geolocation.at[idx, "ASN"] = "AS???"
+
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch geolocation for {ip}: {e}")
+
+        time.sleep(1.0)  # Throttle requests to avoid IPinfo rate limits
+
+    return nodes_with_geolocation
+
+
 ## Currently, a deficient function since downloaded IPinfo database lacks of latitude and longitude.
 def find_geolocation_by_ipinfo_database(mtr_result: pd.DataFrame, db_path: str) -> pd.DataFrame:
     """
