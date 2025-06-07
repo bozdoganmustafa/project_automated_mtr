@@ -87,8 +87,10 @@ if __name__ == "__main__":
         if dest == own_ip:
             continue
         process_mtr_for_destination(dest, i + 1, own_ip)
-
-    vm_pp.symmetrize_latency_matrix()
+    
+    # Don't symmetrize, uni-directional measurement from that VM only.
+    # Latency matrices will be merged and symmetrized at host machine.
+    # vm_pp.symmetrize_latency_matrix()
 
     vm_pp.get_explored_nodes_df().to_csv(EXPLORED_NODES_FILE, index=False)
     vm_pp.get_latency_matrix().to_csv(LATENCY_MATRIX_FILE)
