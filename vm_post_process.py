@@ -1,4 +1,5 @@
 import pandas as pd
+import ipaddress
 
 # Shared Global Structures for VM Post Processing
 
@@ -56,6 +57,30 @@ def filter_mtr_invalid_ips(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     return df[df["host"].apply(is_valid_ip)].reset_index(drop=True)
+
+import ipaddress
+
+
+def replace_private_source_ip(mtr_result: pd.DataFrame, public_source_ip: str) -> pd.DataFrame:
+    """
+    Replaces the first hop's IP (source) with the given public IP if it is private.
+    Modifies the MTR result in-place and returns it.
+    """
+    if mtr_result.empty:
+        return mtr_result
+
+    src_ip = mtr_result.iloc[0]["host"]
+
+    try:
+        ip_obj = ipaddress.ip_address(src_ip)
+        if ip_obj.is_private:
+            mtr_result.at[0, "host"] = public_source_ip
+            print(f"Replaced private source IP '{src_ip}' with public source IP '{public_source_ip}'")
+    except ValueError:
+        print(f"Invalid IP format in source: {src_ip}")
+
+    return mtr_result
+
 
 def update_explored_nodes_basic(mtr_result: pd.DataFrame):
     """

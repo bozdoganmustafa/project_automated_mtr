@@ -24,7 +24,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(CSV_DIR, exist_ok=True)
 os.makedirs(VM_CSV_DIR, exist_ok=True)
 
-def process_mtr_for_destination(destination: str, iteration_number: int):
+def process_mtr_for_destination(destination: str, iteration_number: int, own_ip: str):
     """
     Full pipeline for one destination.
     Collect latencies and create / extend Latency Matrix and Explored Nodes list.
@@ -39,6 +39,8 @@ def process_mtr_for_destination(destination: str, iteration_number: int):
             df_mtr_result = mtr.filter_mtr_traces(df_mtr_result, ALERT_LOSS_THRESHOLD)
 
             df_mtr_result = vm_pp.filter_mtr_invalid_ips(df_mtr_result)
+             # Replace private source IP
+            df_mtr_result = vm_pp.replace_private_source_ip(df_mtr_result, own_ip)
 
             vm_pp.update_explored_nodes_basic(df_mtr_result)
 
@@ -84,7 +86,7 @@ if __name__ == "__main__":
     for i, dest in enumerate(DESTINATIONS[:TARGET_LIMIT]):
         if dest == own_ip:
             continue
-        process_mtr_for_destination(dest, i + 1)
+        process_mtr_for_destination(dest, i + 1, own_ip)
 
     vm_pp.symmetrize_latency_matrix()
 

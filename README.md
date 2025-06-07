@@ -20,6 +20,8 @@ This project automates network path tracing using MTR (My Traceroute) measuremen
 
 Optionally create a virtual environment:
 ```bash
+sudo apt update
+sudo apt install python3.12-venv
 python3 -m venv venv
 ```
 
