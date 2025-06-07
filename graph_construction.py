@@ -104,9 +104,9 @@ def draw_graph(G: nx.Graph, output_file: str):
 
 def plot_latency_heatmap(output_file: str, title: str, latency_matrix: pd.DataFrame):
     """
-    Plots a heatmap of the latency matrix and saves it to the given file path.
+    Plots a heatmap with improved axis labeling for larger latency matrices.
+    Displays as many IP labels as feasible without overlap.
     """
-
     if latency_matrix.empty:
         print("[WARN] Provided latency matrix is empty. Heatmap not generated.")
         return
@@ -114,22 +114,31 @@ def plot_latency_heatmap(output_file: str, title: str, latency_matrix: pd.DataFr
     plot_df = latency_matrix.copy().replace({pd.NA: np.nan})
     plot_df = plot_df.astype("float64")
 
-    plt.figure(figsize=(12, 10))
-    sns.heatmap(
+    num_labels = len(plot_df)
+    size = max(12, min(num_labels * 0.3, 30))  # Dynamic figure size based on matrix size
+    font_size = max(6, 600 // num_labels)     # Adjust font size based on number of IPs
+
+    plt.figure(figsize=(size, size))
+    ax = sns.heatmap(
         plot_df,
-        annot=True,
-        fmt=".1f",
         cmap="coolwarm",
         center=0,
-        linewidths=0.5,
+        linewidths=0.3,
         linecolor='gray',
         cbar_kws={"label": "Latency (ms)"},
-        square=True
+        square=True,
+        xticklabels=True,
+        yticklabels=True,
+        annot=False
     )
 
-    plt.title(title)
-    plt.xlabel("Destination Node ID")
-    plt.ylabel("Source Node ID")
+    ax.set_title(title, fontsize=font_size + 2)
+    ax.set_xlabel("Destination IP", fontsize=font_size + 1)
+    ax.set_ylabel("Source IP", fontsize=font_size + 1)
+
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=90, fontsize=font_size)
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=font_size)
+
     plt.tight_layout()
     plt.savefig(output_file, format='png', dpi=300)
     plt.close()
