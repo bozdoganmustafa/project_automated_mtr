@@ -14,7 +14,7 @@ ALERT_LOSS_THRESHOLD = 70.0       # % packet loss to flag and filter an unrespon
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
 CSV_DIR = "./csv_folder"
-DESTINATIONS_FILE = os.path.join(CSV_DIR, "responsive_hetzner.csv")
+DESTINATIONS_FILE = os.path.join(CSV_DIR, "destinations.csv")
 DESTINATIONS = pd.read_csv(DESTINATIONS_FILE, header=None)[0].astype(str).str.strip().tolist()
 TARGET_LIMIT = 3  # Process only the first destinations until this limit.
 

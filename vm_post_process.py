@@ -35,7 +35,7 @@ def load_explored_nodes(file_path: str):
         raise ValueError("Expected column 'IP_address' not found.")
 
     explored_nodes = df[["IP_address"]].dropna().reset_index(drop=True)
-    print(f"[INFO] Loaded explored nodes from {file_path}, total: {len(explored_nodes)}")
+    print(f"Loaded explored nodes from {file_path}, total: {len(explored_nodes)}")
 
 
 def load_latency_matrix(file_path: str):
@@ -45,7 +45,7 @@ def load_latency_matrix(file_path: str):
     """
     global latency_matrix
     latency_matrix = pd.read_csv(file_path, index_col=0)
-    print(f"[INFO] Loaded latency matrix from {file_path}, shape: {latency_matrix.shape}")
+    print(f" Loaded latency matrix from {file_path}, shape: {latency_matrix.shape}")
 
     
 def filter_mtr_invalid_ips(df: pd.DataFrame) -> pd.DataFrame:
@@ -134,11 +134,10 @@ def update_latency_matrix_for_source_node(mtr_result: pd.DataFrame):
         return  # skip if source IP is not valid
     
     latencies = extract_smoothed_latencies(mtr_result)
-    print("After extract_smoothed_latencies:", latencies)
-
+    
     # Monotonic increase (non-decreasing) by smoothing
     latencies = enforce_monotonic_increase(latencies)
-    print("After enforce_monotonic_increase:", latencies, "\n")
+    
 
     # Fill values from source to all hops
     for i in range(1, len(mtr_result)): # skip first row (source)
@@ -211,6 +210,7 @@ def extract_smoothed_latencies(mtr_result: pd.DataFrame) -> list:
             latencies.append(None)
         else:
             latencies.append(max(0.0, avg - stdev))  # Ensure non-negative latency
+    print("Latencies extracted from mtr as Avg - StdDev:", latencies)
     return latencies
 
 # Ensure non-decreasing list by lowering previous higher values.
@@ -219,6 +219,7 @@ def enforce_monotonic_increase(values):
     for i in range(len(latencies) - 2, -1, -1):  # Start from second-last going backwards
         if latencies[i] is not None and latencies[i + 1] is not None:
             latencies[i] = min(latencies[i], latencies[i + 1])
+    print("Monotonic increase ensured: ", latencies, "\n")
     return latencies
 
 def symmetrize_latency_matrix():
