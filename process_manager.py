@@ -79,6 +79,11 @@ if __name__ == "__main__":
 
     pp.save_extended_explored_nodes(EXT_NODES_FILE)
 
+    # Generate and save geodesic distance matrix
+    distance_matrix = pp.generate_distance_matrix(pp.get_extended_explored_nodes())
+    distance_matrix.to_csv(os.path.join(CSV_DIR, "distance_matrix.csv"))
+    print(f"Saved distance matrix to {os.path.join(CSV_DIR, 'distance_matrix.csv')}")
+
     """
     # Find Geolocations for responsive_hetzner.csv  
     responsive_path = os.path.join(CSV_DIR, "responsive_hetzner.csv")
@@ -100,7 +105,6 @@ if __name__ == "__main__":
     pp.ensure_overall_latency_matrix_square(pp.get_extended_explored_nodes())
     # Traverse all subfolders under ./vm_csv_folder looking for vm_latency_matrix.csv
     vm_latency_matrix_files = glob.glob(VM_CSV_DIR + "/**/vm_final_latency_matrix.csv", recursive=True)
-    # Before looking for geo, filter existing IPs.
     for vm_file in vm_latency_matrix_files:
         print(f" Processing VM latency matrix file: {vm_file}")
         vm_latency_matrix = pp.load_vm_latency_matrix(vm_file)

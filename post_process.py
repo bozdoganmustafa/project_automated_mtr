@@ -281,3 +281,37 @@ def calculate_theoretical_minimum_latency(distance_km: float) -> float:
     speed_km_per_s = 200_000  # 2/3 of light speed
     latency_sec = (2 * distance_km) / speed_km_per_s
     return latency_sec * 1000  # Convert to ms
+
+
+def generate_distance_matrix(extended_explored_nodes: pd.DataFrame) -> pd.DataFrame:
+    """
+    Generates a symmetric distance matrix (in km) based on geodesic distance
+    between all pairs of nodes in extended_explored_nodes.
+    """
+    if "IP_address" not in extended_explored_nodes.columns:
+        raise ValueError("Missing 'IP_address' column in input dataframe.")
+    if "latitude" not in extended_explored_nodes.columns or "longitude" not in extended_explored_nodes.columns:
+        raise ValueError("Missing 'latitude' or 'longitude' columns in input dataframe.")
+
+    ips = extended_explored_nodes["IP_address"].tolist()
+    latitudes = extended_explored_nodes["latitude"].tolist()
+    longitudes = extended_explored_nodes["longitude"].tolist()
+
+    # Initialize empty DataFrame
+    distance_matrix = pd.DataFrame(index=ips, columns=ips, dtype=float)
+
+    for i in range(len(ips)):
+        lat1, lon1 = latitudes[i], longitudes[i]
+        for j in range(i, len(ips)):
+            lat2, lon2 = latitudes[j], longitudes[j]
+
+            if pd.isna(lat1) or pd.isna(lon1) or pd.isna(lat2) or pd.isna(lon2):
+                distance = None
+            else:
+                distance = calculate_geodesic_distance(lat1, lon1, lat2, lon2)
+
+            # Set both (i,j) and (j,i) to ensure symmetry
+            distance_matrix.at[ips[i], ips[j]] = distance
+            distance_matrix.at[ips[j], ips[i]] = distance
+
+    return distance_matrix

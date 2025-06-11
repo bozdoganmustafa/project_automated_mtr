@@ -97,7 +97,7 @@ def draw_graph(G: nx.Graph, output_file: str):
     # plt.tight_layout()
     plt.savefig(output_file, format='png', dpi=300)
     plt.close()
-    print(f"[INFO] Graph saved to {output_file}")
+    print(f"Graph saved to {output_file}")
     plt.show()
 
     return
@@ -108,7 +108,7 @@ def plot_latency_heatmap(output_file: str, title: str, latency_matrix: pd.DataFr
     Displays as many IP labels as feasible without overlap.
     """
     if latency_matrix.empty:
-        print("[WARN] Provided latency matrix is empty. Heatmap not generated.")
+        print("Provided latency matrix is empty. Heatmap not generated.")
         return
 
     plot_df = latency_matrix.copy().replace({pd.NA: np.nan})
@@ -143,4 +143,4 @@ def plot_latency_heatmap(output_file: str, title: str, latency_matrix: pd.DataFr
     plt.savefig(output_file, format='png', dpi=300)
     plt.close()
 
-    print(f"[INFO] Heatmap saved to {output_file}")
+    print(f"Heatmap saved to {output_file}")
