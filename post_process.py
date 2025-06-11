@@ -227,7 +227,7 @@ def generate_residual_latency_matrix():
 
     for src_ip in ips:
         for dst_ip in ips:
-            if src_ip == dst_ip:
+            if src_ip == dst_ip: # TODO Maybe remove
                 residual_latency_matrix.at[src_ip, dst_ip] = 0.0
                 continue
 

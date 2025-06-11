@@ -1,9 +1,11 @@
 import os
+import datetime
+import argparse
+import time
+
 import pandas as pd
 import automated_mtr as mtr
-import datetime
 import vm_post_process as vm_pp
-import argparse
 import utils as utils
 
 
@@ -19,6 +21,7 @@ DESTINATIONS = pd.read_csv(DESTINATIONS_FILE, header=None)[0].astype(str).str.st
 TARGET_LIMIT = 3  # Process only the first destinations until this limit.
 
 VM_CSV_DIR = "./vm_csv_folder" # For experiment results as CSV
+UNIX_TIMESTAMP = int(time.time())
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(CSV_DIR, exist_ok=True)
@@ -72,15 +75,14 @@ if __name__ == "__main__":
     os.makedirs(machine_dir, exist_ok=True) 
 
     ## Load existing Explored Nodes file if available.
-    ## Load existing Latency Matrix file if available.
     ## Explored nodes includes only set of IPs for complete latency matrix (no geolocation at VM side).
     ## Latency Matrix should have Node_IPs instead of Node_IDs.
     EXPLORED_NODES_FILE = os.path.join(machine_dir, "vm_explored_nodes.csv")
-    LATENCY_MATRIX_FILE = os.path.join(machine_dir, "vm_latency_matrix.csv")
+    # New: Add Unix timestamp to filename for uniqueness
+    LATENCY_MATRIX_FILE = os.path.join(machine_dir, f"vm_latency_matrix_{UNIX_TIMESTAMP}.csv")
     if os.path.exists(EXPLORED_NODES_FILE):
         vm_pp.load_explored_nodes(EXPLORED_NODES_FILE)
-    if os.path.exists(LATENCY_MATRIX_FILE):
-        vm_pp.load_latency_matrix(LATENCY_MATRIX_FILE)
+
 
     # Loop over the destinations and process mtr except for own IP address.
     for i, dest in enumerate(DESTINATIONS[:TARGET_LIMIT]):
@@ -94,6 +96,9 @@ if __name__ == "__main__":
 
     vm_pp.get_explored_nodes_df().to_csv(EXPLORED_NODES_FILE, index=False)
     vm_pp.get_latency_matrix().to_csv(LATENCY_MATRIX_FILE)
+    # Save metadata
+    with open(os.path.join(machine_dir, "matrix_index.csv"), "a") as f:
+        f.write(f"{LATENCY_MATRIX_FILE},{UNIX_TIMESTAMP},{TIMESTAMP}\n")
 
     ## Put into a new class: DataRegularizer // Latency Matrix Regularizer Similar to post_process.py
     ## Define a new matrix with list of values as stringfied floats. So that, each measurement results at different times can be stored cumulatively.
