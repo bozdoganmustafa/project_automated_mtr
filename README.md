@@ -61,6 +61,12 @@ If Interval parameter in automated_mtr.py is set to a value lower than 1.0, scri
 sudo -E python3 vm_process_manager.py
 ```
 
+After all measurements are done, created timestamped latency matrices must be merged into final latency matrix:
+```bash
+python3 vm_matrix_merger.py
+```
+
+
 Deactivate venv if it is active:
 ```bash
 deactivate
@@ -70,6 +76,8 @@ From Host machine:
 ```bash
 python3 process_manager.py
 ```
+
+It will collect each final latency matrix from VMs and merge them into Overall Latency Matrix.
 
 ## Important Notes
 - The project focuses on destinations located in **Europe** and the **USA**.

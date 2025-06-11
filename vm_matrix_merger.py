@@ -3,7 +3,7 @@ import argparse
 import pandas as pd
 from datetime import datetime
 import utils
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 
 # Configuration
@@ -45,20 +45,19 @@ def merge_latency_matrices(matrix_files: list) -> pd.DataFrame:
     Merge multiple latency matrices by averaging values per cell.
     """
     cell_values = defaultdict(list)
-    all_ips = set()
+    all_ips_set = set()
+    all_ips_list = []
 
     for file in matrix_files:
-        try:
-            df = pd.read_csv(file, index_col=0)
-        except Exception as e:
-            print(f" Failed to read {file}: {e}")
-            continue
+        df = load_latency_matrix(file)
 
         df = df.astype("float64")
         df = df.where(pd.notnull(df), None)  # Convert NaNs to None
         rows, cols = df.index.tolist(), df.columns.tolist()
-        all_ips.update(rows)
-        all_ips.update(cols)
+        for ip in rows + cols:
+            if ip not in all_ips_set:
+                all_ips_set.add(ip)
+                all_ips_list.append(ip)
 
         for i in rows:
             for j in cols:
@@ -66,13 +65,12 @@ def merge_latency_matrices(matrix_files: list) -> pd.DataFrame:
                 if val is not None:
                     cell_values[(i, j)].append(val)
 
-    all_ips = sorted(all_ips)
-    result_df = pd.DataFrame(index=all_ips, columns=all_ips, dtype=float)
+    merged_latency_matrix = pd.DataFrame(index=all_ips_list, columns=all_ips_list, dtype=float)
 
     for (i, j), values in cell_values.items():
-        result_df.at[i, j] = sum(values) / len(values)
+        merged_latency_matrix.at[i, j] = sum(values) / len(values)
 
-    return result_df
+    return merged_latency_matrix
 
 
 if __name__ == "__main__":
@@ -97,8 +95,9 @@ if __name__ == "__main__":
     print(f"Found {len(matrix_files)} latency matrix files to merge.")
 
     # Merge and save
+    print(f"Merging files from UNIX timestamps {args.start} to {args.end}")
     merged_matrix = merge_latency_matrices(matrix_files)
-    output_file = os.path.join(machine_dir, "vm_merged_latency_matrix.csv")
+    output_file = os.path.join(machine_dir, "vm_final_latency_matrix.csv")
     merged_matrix.to_csv(output_file)
     print(f"Saved merged latency matrix to: {output_file}")
 

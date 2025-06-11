@@ -99,7 +99,7 @@ if __name__ == "__main__":
     # Initial layout of Overall Latency Matrix is constructured from Overall Explored Nodes.
     pp.ensure_overall_latency_matrix_square(pp.get_extended_explored_nodes())
     # Traverse all subfolders under ./vm_csv_folder looking for vm_latency_matrix.csv
-    vm_latency_matrix_files = glob.glob(VM_CSV_DIR + "/**/vm_latency_matrix.csv", recursive=True)
+    vm_latency_matrix_files = glob.glob(VM_CSV_DIR + "/**/vm_final_latency_matrix.csv", recursive=True)
     # Before looking for geo, filter existing IPs.
     for vm_file in vm_latency_matrix_files:
         print(f" Processing VM latency matrix file: {vm_file}")
