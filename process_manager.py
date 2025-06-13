@@ -84,6 +84,12 @@ if __name__ == "__main__":
     distance_matrix.to_csv(os.path.join(CSV_DIR, "distance_matrix.csv"))
     print(f"Saved distance matrix to {os.path.join(CSV_DIR, 'distance_matrix.csv')}")
 
+    # Generate and save theoretical minimum latency matrix
+    theoretical_min_matrix = pp.generate_theoretical_min_latency_matrix()
+    theoretical_min_matrix.to_csv(os.path.join(CSV_DIR, "theoretical_min_latency_matrix.csv"))
+    print(f"Saved theoretical latency matrix to {os.path.join(CSV_DIR, 'theoretical_min_latency_matrix.csv')}")
+
+
     """
     # Find Geolocations for responsive_hetzner.csv  
     responsive_path = os.path.join(CSV_DIR, "responsive_hetzner.csv")
@@ -132,4 +138,20 @@ if __name__ == "__main__":
         output_file=residual_heatmap_path,
         title="Residual Latency Matrix Heatmap",
         latency_matrix=pp.get_residual_latency_matrix()
+    )
+    
+    # === Plot distance heatmap
+    distance_heatmap_path = os.path.join(GRAPH_DIR, f"distance_matrix_heatmap__{TIMESTAMP}.png")
+    gc.plot_latency_heatmap(
+        output_file=distance_heatmap_path,
+        title="Geodesic Distance Matrix (km)",
+        latency_matrix=pp.get_distance_matrix()
+    )
+
+    # === Plot theoretical latency heatmap
+    theoretical_heatmap_path = os.path.join(GRAPH_DIR, f"theoretical_latency_heatmap__{TIMESTAMP}.png")
+    gc.plot_latency_heatmap(
+        output_file=theoretical_heatmap_path,
+        title="Theoretical Minimum Latency Matrix (ms)",
+        latency_matrix=pp.get_theoretical_min_latency_matrix()
     )

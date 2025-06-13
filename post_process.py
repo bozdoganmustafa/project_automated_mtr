@@ -14,11 +14,20 @@ extended_explored_nodes = pd.DataFrame(columns=[
     "node_id", "IP_address", "ASN", "latitude", "longitude", "city", "region", "country"
 ])
 
+distance_matrix = pd.DataFrame()
+theoretical_min_latency_matrix = pd.DataFrame()
+
 def get_extended_explored_nodes():
     return extended_explored_nodes
 
 def get_overall_latency_matrix():
     return overall_latency_matrix
+
+def get_theoretical_min_latency_matrix():
+    return theoretical_min_latency_matrix
+
+def get_distance_matrix():
+    return distance_matrix
 
 def load_extended_explored_nodes(file_path: str):
     """
@@ -203,62 +212,75 @@ def symmetrize_matrix(matrix: pd.DataFrame) -> pd.DataFrame:
                 result.at[j, i] = min_val
                 
     return result
-
-
+   
 def generate_residual_latency_matrix():
     """
     Generate a matrix that shows residual latency: observed - theoretical_min.
-    Only computes for IP pairs with valid observed latency and known geo info.
+    Uses global matrices: overall_latency_matrix and theoretical_min_latency_matrix.
+    Only computes residuals where both values are available.
     """
+    global overall_latency_matrix
     global residual_latency_matrix
+    global theoretical_min_latency_matrix
+    global extended_explored_nodes
 
-    extended_nodes = get_extended_explored_nodes()
-    ip_to_geo = {
-        row["IP_address"]: (row["latitude"], row["longitude"])
-        for _, row in extended_nodes.iterrows()
-        if pd.notna(row["latitude"]) and pd.notna(row["longitude"])
-    }
+    if overall_latency_matrix.empty or theoretical_min_latency_matrix.empty:
+        raise ValueError("Overall Latency matrix or theoretical latency matrix is empty. Generate them first.")
 
-    overall_matrix = get_overall_latency_matrix()
-    ips = extended_nodes["IP_address"].dropna().unique()
+    ips = extended_explored_nodes["IP_address"].dropna().unique()
 
-    # Initialize square matrix
     residual_latency_matrix = pd.DataFrame(index=ips, columns=ips, dtype=float)
 
-    for src_ip in ips:
-        for dst_ip in ips:
-            if src_ip == dst_ip: # TODO Maybe remove
-                residual_latency_matrix.at[src_ip, dst_ip] = 0.0
-                continue
+    for src in ips:
+        for dst in ips:
+            observed = overall_latency_matrix.at[src, dst] if src in overall_latency_matrix.index and dst in overall_latency_matrix.columns else None
+            theoretical = theoretical_min_latency_matrix.at[src, dst] if src in theoretical_min_latency_matrix.index and dst in theoretical_min_latency_matrix.columns else None
 
-            try:
-                observed = overall_matrix.at[src_ip, dst_ip]
-            except KeyError:
-                continue
+            if pd.notna(observed) and pd.notna(theoretical):
+                residual = max(observed - theoretical, 0)
+                residual_latency_matrix.at[src, dst] = round(residual, 3)
 
-            if pd.isna(observed):
-                continue
+    print("Residual latency matrix generated.")
 
-            if src_ip not in ip_to_geo or dst_ip not in ip_to_geo:
-                continue
-
-            lat1, lon1 = ip_to_geo[src_ip]
-            lat2, lon2 = ip_to_geo[dst_ip]
-            distance = calculate_geodesic_distance(lat1, lon1, lat2, lon2)
-            theoretical_min = calculate_theoretical_minimum_latency(distance)
-
-            if theoretical_min is None:
-                continue
-
-            residual = observed - theoretical_min
-            residual_latency_matrix.at[src_ip, dst_ip] = round(max(residual, 0), 3)
-
-    print("[INFO] Residual latency matrix generated.")
 
 def get_residual_latency_matrix():
     global residual_latency_matrix
     return residual_latency_matrix
 
+
+def generate_distance_matrix(extended_explored_nodes: pd.DataFrame) -> pd.DataFrame:
+    """
+    Generates a symmetric distance matrix (in km) based on geodesic distance
+    between all pairs of nodes in extended_explored_nodes.
+    """
+    global distance_matrix
+
+    if "IP_address" not in extended_explored_nodes.columns:
+        raise ValueError("Missing 'IP_address' column in input dataframe.")
+    if "latitude" not in extended_explored_nodes.columns or "longitude" not in extended_explored_nodes.columns:
+        raise ValueError("Missing 'latitude' or 'longitude' columns in input dataframe.")
+
+    ips = extended_explored_nodes["IP_address"].dropna().unique()
+    geo_dict = {
+        row["IP_address"]: (row["latitude"], row["longitude"])
+        for _, row in extended_explored_nodes.iterrows()
+        if pd.notna(row["latitude"]) and pd.notna(row["longitude"])
+    }
+    
+    distance_matrix = pd.DataFrame(index=ips, columns=ips, dtype=float)
+    
+    for src in ips:
+        for dst in ips:
+            if src not in geo_dict or dst not in geo_dict:
+                continue
+            lat1, lon1 = geo_dict[src]
+            lat2, lon2 = geo_dict[dst]
+            dist = calculate_geodesic_distance(lat1, lon1, lat2, lon2)
+            if dist is not None:
+                distance_matrix.at[src, dst] = int(round(dist))
+
+    print("Distance matrix generated.")
+    return distance_matrix
 
 def calculate_geodesic_distance(lat1, lon1, lat2, lon2) -> float:
     """
@@ -269,6 +291,33 @@ def calculate_geodesic_distance(lat1, lon1, lat2, lon2) -> float:
     except Exception as e:
         print(f"[WARNING] Failed to compute geodesic distance: {e}")
         return None
+
+
+def generate_theoretical_min_latency_matrix() -> pd.DataFrame:
+    """
+    Generates theoretical minimum latency (in ms) matrix based on the distance_matrix.
+    Stores in global theoretical_min_latency_matrix.
+    """
+    global theoretical_min_latency_matrix
+    global distance_matrix
+
+    if distance_matrix.empty:
+        raise ValueError("Distance matrix not initialized. Generate it first.")
+
+    ips = distance_matrix.index.tolist()
+    theoretical_min_latency_matrix = pd.DataFrame(index=ips, columns=ips, dtype=float)
+
+    for src in ips:
+        for dst in ips:
+            distance = distance_matrix.at[src, dst]
+            if pd.notna(distance):
+                delay = calculate_theoretical_minimum_latency(distance)
+                theoretical_min_latency_matrix.at[src, dst] = round(delay, 3)
+
+    print("Theoretical minimum latency matrix generated.")
+    return theoretical_min_latency_matrix
+
+
 
 def calculate_theoretical_minimum_latency(distance_km: float) -> float:
     """
@@ -281,37 +330,3 @@ def calculate_theoretical_minimum_latency(distance_km: float) -> float:
     speed_km_per_s = 200_000  # 2/3 of light speed
     latency_sec = (2 * distance_km) / speed_km_per_s
     return latency_sec * 1000  # Convert to ms
-
-
-def generate_distance_matrix(extended_explored_nodes: pd.DataFrame) -> pd.DataFrame:
-    """
-    Generates a symmetric distance matrix (in km) based on geodesic distance
-    between all pairs of nodes in extended_explored_nodes.
-    """
-    if "IP_address" not in extended_explored_nodes.columns:
-        raise ValueError("Missing 'IP_address' column in input dataframe.")
-    if "latitude" not in extended_explored_nodes.columns or "longitude" not in extended_explored_nodes.columns:
-        raise ValueError("Missing 'latitude' or 'longitude' columns in input dataframe.")
-
-    ips = extended_explored_nodes["IP_address"].tolist()
-    latitudes = extended_explored_nodes["latitude"].tolist()
-    longitudes = extended_explored_nodes["longitude"].tolist()
-
-    # Initialize empty DataFrame
-    distance_matrix = pd.DataFrame(index=ips, columns=ips, dtype=float)
-
-    for i in range(len(ips)):
-        lat1, lon1 = latitudes[i], longitudes[i]
-        for j in range(i, len(ips)):
-            lat2, lon2 = latitudes[j], longitudes[j]
-
-            if pd.isna(lat1) or pd.isna(lon1) or pd.isna(lat2) or pd.isna(lon2):
-                distance = None
-            else:
-                distance = calculate_geodesic_distance(lat1, lon1, lat2, lon2)
-
-            # Set both (i,j) and (j,i) to ensure symmetry
-            distance_matrix.at[ips[i], ips[j]] = distance
-            distance_matrix.at[ips[j], ips[i]] = distance
-
-    return distance_matrix
