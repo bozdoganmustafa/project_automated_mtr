@@ -6,7 +6,8 @@ import automated_mtr as mtr
 import datetime
 import post_process as pp
 import glob
-
+# Ricci Curvature codes are disabled since it throws errors due to usage of/ missing of networkkit module.
+# import compute_ricci_curvature as ricci
 
 TOKEN_IPINFO = "34f1e6afbef803"  # Personal IP Info token for "Lite" plan.
 
@@ -155,8 +156,39 @@ if __name__ == "__main__":
         title="Theoretical Minimum Latency Matrix (ms)",
         latency_matrix=pp.get_theoretical_min_latency_matrix()
     )
+
+    # Latency histogram
+    gc.plot_matrix_histogram(
+        matrix=pp.get_overall_latency_matrix(),
+        output_file=os.path.join(GRAPH_DIR, f"overall_latency_histogram__{TIMESTAMP}.png"),
+        title="Overall Latency Histogram (ms)"
+    )
+    # Residual latency histogram
+    gc.plot_matrix_histogram(
+        matrix=pp.get_residual_latency_matrix(),
+        output_file=os.path.join(GRAPH_DIR, f"residual_latency_histogram__{TIMESTAMP}.png"),
+        title="Residual Latency Histogram (ms)"
+    )
+
     # === Visualize Hetzner IPs on map
+    """
     gc.visualize_ip_geolocations(
         csv_path="./csv_folder/responsive_hetzner_with_geolocation.csv",
         output_html="./graph_folder/hetzner_ip_map.html"
     )
+    """
+
+
+    # Example usage (in main or notebook):
+    residual_df = pp.get_residual_latency_matrix()
+    latency_df = pp.get_overall_latency_matrix()
+    threshold = 100.0
+
+    graph_matrix = ricci.generate_graph_matrix_from_residuals(residual_df, threshold)
+    ricci.construct_networkx_graph(graph_matrix)
+    ricci.assign_edge_weights_from_latency(latency_df)
+    G_with_curvature = ricci.compute_ollivier_ricci_curvatures()
+
+    # View curvature:
+    for u, v, data in G_with_curvature.edges(data=True):
+        print(f"{u} <-> {v}: Ricci Curvature = {data.get('ricciCurvature')}")

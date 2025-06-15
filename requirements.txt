@@ -5,3 +5,5 @@ requests
 seaborn
 geopy
 folium
+numpy
+GraphRicciCurvature==0.4.2
