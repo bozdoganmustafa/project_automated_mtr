@@ -186,3 +186,33 @@ def visualize_ip_geolocations(csv_path: str, output_html: str):
 
     m.save(output_html)
     print(f"[INFO] Saved map visualization to {output_html}")
+
+
+def plot_matrix_histogram(matrix: pd.DataFrame, output_file: str, title: str = "Value Distribution", bins: int = 50):
+    """
+    Plots and saves a histogram of all non-NaN values in the matrix.
+
+    Parameters:
+    - matrix (pd.DataFrame): The input matrix with numeric values.
+    - output_file (str): Path to save the histogram plot.
+    - title (str): Title of the plot.
+    - bins (int): Number of histogram bins (default 50).
+    """
+    flat_values = matrix.values.flatten()
+    valid_values = pd.Series(flat_values).dropna()
+
+    if valid_values.empty:
+        print(f"[WARN] No valid values found in matrix for: {title}")
+        return
+
+    plt.figure(figsize=(10, 6))
+    plt.hist(valid_values, bins=bins, color='steelblue', edgecolor='black')
+    plt.title(title)
+    plt.xlabel("Value")
+    plt.ylabel("Frequency")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(output_file, format='png', dpi=300)
+    plt.close()
+
+    print(f"[INFO] Histogram saved to {output_file}")

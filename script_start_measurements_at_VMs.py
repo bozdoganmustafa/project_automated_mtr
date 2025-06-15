@@ -3,9 +3,12 @@ import subprocess
 import shutil
 import os
 
-
 ## IMPORTANT WARNING ##
 # This script will first clear all results on the remote VMs before starting new measurements.
+
+# === GLOBAL MEASUREMENT SETTINGS ===
+period_seconds = 28800           # Period between measurements (8 hours) in seconds
+repetitions = 21                  # Number of measurement repetitions in total
 
 # === VM CONFIGURATION ===
 VMs = {
@@ -92,10 +95,6 @@ def clear_all_vm_results(vm_ip, relative_path):
         print(f"Failed to clear local contents: {e}")
 
 
-# === GLOBAL MEASUREMENT SETTINGS ===
-period_seconds = 14400           # Period between measurements (4 hours)
-repetitions = 6                  # Number of repetitions
-
 # === FUNCTION: Start Measurement Process on Remote VM ===
 def start_measurement_process(vm_ip, period, repetitions):
     print(f"Starting measurement process on {vm_ip}...")
@@ -130,8 +129,8 @@ def start_measurement_process(vm_ip, period, repetitions):
 
 # === MAIN FUNCTION ===
 def main():
-    period_seconds = 14400           # Period between measurements in seconds
-    repetitions = 6                # number of repetitions
+    global period_seconds, repetitions, VMs
+    
     period_minutes = period_seconds // 60
     print(f"\n Measurement Configuration:")
     print(f"Period between measurements: {period_minutes} minutes")
