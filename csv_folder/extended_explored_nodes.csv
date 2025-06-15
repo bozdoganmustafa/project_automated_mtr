@@ -113,3 +113,7 @@ node_id,IP_address,ASN,latitude,longitude,city,region,country
 111,184.105.213.118,AS6939,35.6895,139.6917,Tokyo,Tokyo,JP
 112,184.105.64.253,AS6939,1.2897,103.8501,Singapore,Singapore,SG
 113,62.115.140.50,AS1299,43.297,5.3811,Marseille,Provence-Alpes-Côte d'Azur,FR
+114,62.115.137.119,AS1299,60.1695,24.9354,Helsinki,Uusimaa,FI
+115,62.115.122.32,AS1299,59.3294,18.0687,Stockholm,Stockholm,SE
+116,62.115.141.219,AS1299,59.3294,18.0687,Stockholm,Stockholm,SE
+117,184.105.64.254,AS6939,35.6895,139.6917,Tokyo,Tokyo,JP
