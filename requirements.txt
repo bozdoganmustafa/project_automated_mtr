@@ -4,3 +4,4 @@ matplotlib
 requests
 seaborn
 geopy
+folium

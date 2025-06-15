@@ -155,3 +155,8 @@ if __name__ == "__main__":
         title="Theoretical Minimum Latency Matrix (ms)",
         latency_matrix=pp.get_theoretical_min_latency_matrix()
     )
+    # === Visualize Hetzner IPs on map
+    gc.visualize_ip_geolocations(
+        csv_path="./csv_folder/responsive_hetzner_with_geolocation.csv",
+        output_html="./graph_folder/hetzner_ip_map.html"
+    )

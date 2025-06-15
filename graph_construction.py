@@ -144,3 +144,45 @@ def plot_latency_heatmap(output_file: str, title: str, latency_matrix: pd.DataFr
     plt.close()
 
     print(f"Heatmap saved to {output_file}")
+
+
+# Visualize a list of nodes with geolocation info using Folium with clustering on map.
+def visualize_ip_geolocations(csv_path: str, output_html: str):
+    import folium
+    from folium.plugins import MarkerCluster
+    import pandas as pd
+    import os
+    """
+    Visualizes IP geolocations from a CSV file using Folium with clustering.
+    
+    Parameters:
+    - csv_path: Path to CSV file containing latitude, longitude columns
+    - output_html: Path to save the interactive HTML map
+    """
+    if not os.path.exists(csv_path):
+        print(f"[ERROR] File not found: {csv_path}")
+        return
+
+    df = pd.read_csv(csv_path)
+    required_cols = {"latitude", "longitude"}
+    if not required_cols.issubset(df.columns):
+        print(f"[ERROR] CSV must contain columns: {required_cols}")
+        return
+
+    # Drop rows with missing coordinates
+    df = df.dropna(subset=["latitude", "longitude"])
+
+    # Create map centered roughly at geographical mean
+    start_coords = [df["latitude"].mean(), df["longitude"].mean()]
+    m = folium.Map(location=start_coords, zoom_start=2, tiles='cartodbpositron')
+
+    marker_cluster = MarkerCluster().add_to(m)
+
+    for _, row in df.iterrows():
+        lat, lon = row["latitude"], row["longitude"]
+        # Optional: you could also add popup info like ASN or city
+        popup_text = f"{row.get('city', '')}, {row.get('country', '')} ({row.get('ASN', '')})"
+        folium.Marker(location=[lat, lon], popup=popup_text).add_to(marker_cluster)
+
+    m.save(output_html)
+    print(f"[INFO] Saved map visualization to {output_html}")
