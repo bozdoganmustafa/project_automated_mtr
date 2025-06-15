@@ -52,3 +52,8 @@ dist/
 # Database file for geolocation
 geolocation_db/*
 !geolocation_db/.keep
+
+# Measurement results by virtual machines. Temporarily ignored until measurement process is complete.
+vm_csv_folder/65_108_94_222/
+vm_csv_folder/5_223_62_210/
+vm_csv_folder/5_78_98_32/

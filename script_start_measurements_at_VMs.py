@@ -3,6 +3,10 @@ import subprocess
 import shutil
 import os
 
+
+## IMPORTANT WARNING ##
+# This script will first clear all results on the remote VMs before starting new measurements.
+
 # === VM CONFIGURATION ===
 VMs = {
     "Helsinki": {
@@ -29,6 +33,8 @@ def synchronize_project(vm_ip):
     remote_cmd = (
         f'cd {REMOTE_PROJECT_PATH} && '
         f'{REMOTE_VENV_ACTIVATE} && '
+        f'git restore . && '
+        f'git clean -fd && '
         f'git pull'
     )
 
@@ -94,10 +100,17 @@ repetitions = 6                  # Number of repetitions
 def start_measurement_process(vm_ip, period, repetitions):
     print(f"Starting measurement process on {vm_ip}...")
 
-    remote_cmd = (
+    # Step 1: Kill any tmux sessions safely
+    kill_tmux_cmd = (
         f'cd {REMOTE_PROJECT_PATH} && '
         f'{REMOTE_VENV_ACTIVATE} && '
-        f'tmux kill-server || true && '  # Kill existing tmux sessions, ignore error if none
+        f'tmux kill-server || true'
+    )
+
+    # Step 2: Start new tmux session with measurement loop
+    start_tmux_cmd = (
+        f'cd {REMOTE_PROJECT_PATH} && '
+        f'{REMOTE_VENV_ACTIVATE} && '
         f'tmux new-session -d -s vmrun bash -c \''
         f'for i in $(seq 1 {repetitions}); do '
         f'python3 vm_process_manager.py; '
@@ -106,10 +119,8 @@ def start_measurement_process(vm_ip, period, repetitions):
     )
 
     try:
-        subprocess.run(
-            ["ssh", f"{USERNAME}@{vm_ip}", remote_cmd],
-            check=True
-        )
+        subprocess.run(["ssh", f"{USERNAME}@{vm_ip}", kill_tmux_cmd], check=True)
+        subprocess.run(["ssh", f"{USERNAME}@{vm_ip}", start_tmux_cmd], check=True)
         print(f"Measurement process started on {vm_ip} in tmux session 'vmrun'")
     except subprocess.CalledProcessError as e:
         print(f"Failed to start measurement on {vm_ip}: {e}")
@@ -122,21 +133,20 @@ def main():
     period_seconds = 14400           # Period between measurements in seconds
     repetitions = 6                # number of repetitions
     period_minutes = period_seconds // 60
-
     print(f"\n Measurement Configuration:")
     print(f"Period between measurements: {period_minutes} minutes")
     print(f"Number of repetitions: {repetitions}\n")
-
     total_duration = period_seconds * (repetitions - 1)
     expected_end_time = datetime.now() + timedelta(seconds=total_duration)
     print(f"Expected final measurement ends at: {expected_end_time.strftime('%Y-%m-%d %H:%M:%S')}\n")
 
     for location, vm_info in VMs.items():
+        print() # line break
         ip = vm_info["ip"]
         path = vm_info["relative_path"]
         synchronize_project(ip)
         clear_all_vm_results(ip, path)
-        print(f"\n=== Starting Measurement at VM: {location} ({ip}) ===")
+        print(f"=== Starting Measurement at VM: {location} ({ip}) ===")
         start_measurement_process(ip, period_seconds, repetitions)
 
 # === ENTRY POINT ===
