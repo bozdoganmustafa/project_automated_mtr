@@ -22,7 +22,7 @@ def generate_graph_matrix_from_residuals(residual_latency_matrix: pd.DataFrame, 
     return graph_matrix
 
 
-def construct_networkx_graph(graph_matrix: pd.DataFrame):
+def construct_networkx_graph(graph_matrix: pd.DataFrame) -> nx.Graph:
     global graph_networkx
     graph_networkx = nx.Graph()
 
@@ -32,9 +32,9 @@ def construct_networkx_graph(graph_matrix: pd.DataFrame):
                 graph_networkx.add_edge(row_ip, col_ip)
                 if row_ip == col_ip:
                     print(f"Self-edge added: ({row_ip}, {col_ip})")
+    return graph_networkx
 
-
-def assign_edge_weights_from_latency(latency_matrix: pd.DataFrame):
+def assign_edge_weights_from_latency(latency_matrix: pd.DataFrame) -> nx.Graph:
     global graph_networkx
     
     for u, v in graph_networkx.edges():
@@ -51,9 +51,9 @@ def assign_edge_weights_from_latency(latency_matrix: pd.DataFrame):
             weight = 1.0  # default positive fallback
 
         graph_networkx[u][v]['weight'] = float(weight)
+    return graph_networkx
 
-
-def compute_ollivier_ricci_curvatures():
+def compute_ollivier_ricci_curvatures() -> nx.Graph:
     global graph_networkx
     orc = OllivierRicci(
         graph_networkx,

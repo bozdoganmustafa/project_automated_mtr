@@ -7,7 +7,7 @@ import datetime
 import post_process as pp
 import glob
 # Ricci Curvature codes are disabled since it throws errors due to usage of/ missing of networkkit module.
-# import compute_ricci_curvature as ricci
+import compute_ricci_curvature as ricci
 
 TOKEN_IPINFO = "34f1e6afbef803"  # Personal IP Info token for "Lite" plan.
 
